@@ -97,7 +97,11 @@ class CaseGroup:
         self.grid = True
         self.gridWhich = "major"
         self.xs = []
-        self.ys = []
+        self.yss = [[], [], []]
+        self.ys = self.yss[0]
+        self.y2s = self.yss[1]
+        self.y3s = self.yss[2]
+        
         self.xlabel = xlabel
         self.ylabel = ylabel
         self.max = 0
@@ -200,14 +204,14 @@ class Merger:
         return name
         
 
-debug = False
+debug = True
 
 if debug:
     MAX_DURATION = 3#15
     MAX_PRODUCER_NUM = 4#7
     OUT = "./output2/"
 else :
-    MAX_DURATION = 15
+    MAX_DURATION = 10
     MAX_PRODUCER_NUM = 7
     
 csSize0 = "ZERO"

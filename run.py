@@ -35,13 +35,14 @@ class Dot(threading.Thread):
             log.debug("cmd="+testcase.cmd)
             os.system(testcase.cmd)
             
-        self.case.y = self.processData()
+        self.case.y, self.case.y2, self.case.y3 = self.processData()
         log.debug(" dot.y="+str(self.case.y))
         log.info("<Dot "+self.case.getID()+" finishes")
         
     def processData(self):
         case = self.case
-        return getUpdateNum(case.output)
+        cnt = getUpdateNum(case.output)
+        return cnt 
         
 lockrd = threading.RLock()    
 
@@ -82,6 +83,7 @@ class Line(threading.Thread):
 
     def readData(self):
         infile = self.group.outData
+        group = self.group
         #assert len(xs)==len(ys), "len(xs)!=len(ys) xs="+str(xs)+", ys="+str(ys)
         xs = []
         ys = []
@@ -91,15 +93,15 @@ class Line(threading.Thread):
             if rd.startswith(DATA_LINE_IGNORE_FLAG):
                 continue
             rd = rd.strip()
-            [x, y] = rd.split()
-            x = int(x)
-            y = int(y)
-            xs.append(x)
-            ys.append(y)
-            if y>max:
-                max = y
+            xys = rd.split()
+            
+            assert len(xys) == len(group.yss) + 1, "reading data error"
+            x = int(xys[0])
+            for i in range(1, len(xys)):
+                value = int(xys[i])
+                group.yss[i].append(value)
         f.close()
-        return xs, ys, max
+        #return xs, ys, max
 
 
     def writeData(self):
@@ -115,8 +117,12 @@ class Line(threading.Thread):
         f.write(DATA_LINE_IGNORE_FLAG+"\t"+group.xlabel+"\t"+group.ylabel+"\n")
         for i in range(len(xs)):
             x = xs[i]
-            y = ys[i]
-            f.write(str(x)+"\t"+str(y)+"\n")
+            line = str(x)
+            for j in range(len(group.yss)):
+                value = group.yss[j][i]
+                line += "\t" + str(value)
+            line += "\n"
+            f.write(line)
         f.flush()
         f.close()
     
@@ -134,7 +140,7 @@ class Line(threading.Thread):
 #            for cmd in group.getCMDs():
 #                log.info( ">> "+cmd)
 #                
-            xs, ys, max = self.readData()
+            self.readData()
             assert group.xs == xs, "x is not the same data in file. xs="+str(group.xs)+", file.xs="+str(xs)
             group.ys = ys
             group.max = max    
@@ -156,7 +162,8 @@ class Line(threading.Thread):
         for case in group.cases:
             #assert case.y != -1, "group: "+group.getID()+" case.y == -1"
             group.ys.append(case.y)
-            
+            group.y2s.append(case.y2)
+            group.y3s.append(case.y3)
             log.debug("group "+group.getID()+" add ys="+str(case.y)+" xs="+str(group.xs)+" ys="+str(group.ys))
         if (not os.path.exists(self.group.outData)):
             self.writeData()
@@ -273,7 +280,7 @@ if __name__ == "__main__":
     
     t1 = time.clock()
     
-    log.info("Runnint Time: "+str(t1-t0))
+    log.info("Runnint Time: "+str(t1-t0)+" second(s)")
     #    if paper.isAlive():
     #        paper.join()
     #        

@@ -74,14 +74,14 @@ int main (int argc, char *argv[])
 {
 
 	LogComponentEnable("ndn.App", LOG_LEVEL_INFO);
-	LogComponentEnable("ndn.Producer", LOG_LEVEL_INFO);
+	LogComponentEnable("ndn.Producer", LOG_LEVEL_FUNCTION);
 	//LogComponentEnable("InetTopologyReader", LOG_LEVEL_INFO);
+	//LogComponentEnable("ndn.Consumer", LOG_LEVEL_INFO);
+	//LogComponentEnable("ndn.cs.Lru", LOG_LEVEL_INFO);
+	LogComponentEnable("ndn.GlobalRoutingHelper", LOG_LEVEL_DEBUG);
+	LogComponentEnable("ndn.ConsumerZipfMandelbrot", LOG_LEVEL_INFO);
 	LogComponentEnable("ndn.Consumer", LOG_LEVEL_INFO);
-	LogComponentEnable("ndn.cs.Lru", LOG_LEVEL_INFO);
-	//LogComponentEnable("ndn.Consumer", LOG_LEVEL_INFO);
-	//LogComponentEnable("ndn.Consumer", LOG_LEVEL_INFO);
-	//LogComponentEnable("ndn.Consumer", LOG_LEVEL_INFO);
-	LogComponentEnable("ShockExperiment", LOG_LEVEL_FUNCTION);
+	LogComponentEnable("ShockExperiment", LOG_LEVEL_INFO); //all-logic,function, info, debug, warn, error, uncond
 	LogComponentEnable("ndn.fib.Entry", LOG_LEVEL_FUNCTION);
 
 	std::string format ("Inet");
@@ -91,7 +91,7 @@ int main (int argc, char *argv[])
 
 
   int seed = 3;
-  double duration = 1.0;
+  double duration =  1.0;
   int producerNum = 2;
   std::string csSize = "ZERO";
   std::string consumerClass="ConsumerCbr";//consumerCbr
@@ -115,6 +115,7 @@ int main (int argc, char *argv[])
   Config::SetDefault ("ns3::PointToPointNetDevice::DataRate", StringValue ("10Mbps"));
   Config::SetDefault ("ns3::PointToPointChannel::Delay", StringValue ("10ms"));
   Config::SetDefault ("ns3::DropTailQueue::MaxPackets", StringValue("20"));
+  Config::SetDefault("ns3::ndn::fw::Nacks::EnableNACKs", StringValue("true"));
 
   Ptr<TopologyReader> inFile = 0;
   TopologyReaderHelper topoHelp;
@@ -138,7 +139,7 @@ int main (int argc, char *argv[])
    int totlinks = inFile->LinksSize ();
    int totnodes = nodes.GetN();
 
-   NS_LOG_DEBUG("NodesSize="<<totnodes<<", LinksSize="<<totlinks);
+   NS_LOG_INFO("NodesSize="<<totnodes<<", LinksSize="<<totlinks);
    settings<<"\nnodesSize="<<totnodes<<" linksSize="<<totlinks;
 
   //NodeContainer nodes;
@@ -182,7 +183,7 @@ int main (int argc, char *argv[])
 	  nodesFlag[pdc] = 1;
 	  producersID[i] = pdc;
 	  settings<<"\n #producer"<<i<<"="<<pdc;
-	  NS_LOG_INFO("add a producer node id="<<pdc);
+	  NS_LOG_LOGIC("add a producer node id="<<pdc);
   }//for i
 
   std::string prefix = "/prefix";
@@ -202,7 +203,7 @@ int main (int argc, char *argv[])
 
 		  strStream << pdc;
 		  aPrefix = prefix + "/"+strStream.str();
-		  NS_LOG_DEBUG("prefix="<<aPrefix<<" attached to node "<<i);
+		  NS_LOG_LOGIC("prefix="<<aPrefix<<" attached to node "<<i);
 		  consumerHelper.SetPrefix(aPrefix);
 		  consumerHelper.SetAttribute("Frequency", StringValue("50"));
 		  consumerHelper.SetAttribute ("Randomize", StringValue ("exponential"));
