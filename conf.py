@@ -51,6 +51,8 @@ class TestCase:
         self.consumerClass = consumerClass
         
         self.y = -1
+        self.y2 = -1
+        self.y3 = -1
         log.info("cmd4="+self.cmd);
         
     def getID(self):
@@ -204,7 +206,7 @@ class Merger:
         return name
         
 
-debug = True
+debug = False
 
 if debug:
     MAX_DURATION = 3#15

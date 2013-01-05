@@ -42,6 +42,7 @@ class Dot(threading.Thread):
     def processData(self):
         case = self.case
         cnt = getUpdateNum(case.output)
+        
         return cnt 
         
 lockrd = threading.RLock()    
@@ -85,9 +86,7 @@ class Line(threading.Thread):
         infile = self.group.outData
         group = self.group
         #assert len(xs)==len(ys), "len(xs)!=len(ys) xs="+str(xs)+", ys="+str(ys)
-        xs = []
-        ys = []
-        max = 0
+
         f = open(infile)
         for rd in f.readlines():
             if rd.startswith(DATA_LINE_IGNORE_FLAG):
@@ -97,9 +96,10 @@ class Line(threading.Thread):
             
             assert len(xys) == len(group.yss) + 1, "reading data error"
             x = int(xys[0])
+            
             for i in range(1, len(xys)):
                 value = int(xys[i])
-                group.yss[i].append(value)
+                group.yss[i-1].append(value)
         f.close()
         #return xs, ys, max
 
@@ -141,9 +141,7 @@ class Line(threading.Thread):
 #                log.info( ">> "+cmd)
 #                
             self.readData()
-            assert group.xs == xs, "x is not the same data in file. xs="+str(group.xs)+", file.xs="+str(xs)
-            group.ys = ys
-            group.max = max    
+           
             log.debug("line read data from file: "+group.outData)
         else:
             for dot in self.dots:
@@ -161,6 +159,7 @@ class Line(threading.Thread):
         group = self.group        
         for case in group.cases:
             #assert case.y != -1, "group: "+group.getID()+" case.y == -1"
+            
             group.ys.append(case.y)
             group.y2s.append(case.y2)
             group.y3s.append(case.y3)
@@ -200,6 +199,9 @@ class Figure(threading.Thread):
         log.debug("2")
         for line in self.lines:
             group = line.group
+            if len(group.xs) != len(group.ys):
+                log.error("plot xs.size!=ys.size. xs="+str(group.xs)+", ys="+str(group.ys)+" group.id="+group.getID())
+                continue
             log.info("group "+group.getID()+" xs="+str(group.xs)+" ys="+str(group.ys)+ " label="+group.label)
             plt.plot(group.xs, group.ys, group.style, label=group.label)
 

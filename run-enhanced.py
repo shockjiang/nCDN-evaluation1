@@ -5,6 +5,8 @@ import threading
 import time
 
 from conf import *
+from conf2 import *
+
 from script.updateCounter import getUpdateNum
 import matplotlib.pyplot as plt
 import os, os.path
@@ -22,11 +24,11 @@ log.addHandler(fh)
 
 import threading
 
-class Controller(threading.Thread):
+class Manager(threading.Thread):
     def __init__(self, data):
         threading.Thread.__init__(self)
         self.data = data
-        self.threads
+        self.threads = []
         
         
     def run(self):
@@ -42,7 +44,8 @@ class Controller(threading.Thread):
 
 class Dot(threading.Thread):
     def __init__(self, case):
-        threading.Thread.__init__(self)
+        #threading.Thread.__init__(self)
+        threading.Thread.__init__(self, case)
         self.case = case
         
     def run(self):
@@ -65,11 +68,11 @@ class Dot(threading.Thread):
         
 lockrd = threading.RLock()    
 
-class Line(threading.Thread):
+class LineMgr(Manager):
     def __init__(self, group):
-        threading.Thread.__init__(self)
+        Manager.__init__(self, group)
         self.group = group
-        self.dots = [Dot(case) for case in group.cases]
+        self.threads = [Dot(case) for case in group.cases]
     
     
     def drawFigure(self):
@@ -168,31 +171,24 @@ class Line(threading.Thread):
             for dot in self.dots:
                 dot.start()
         
-            self.wait_all_complete()        
-        log.info("<Line "+self.group.getID()+" finishes")
-        
-    def wait_all_complete(self):            
-        for dot in self.dots:
-            if dot.isAlive():
-                dot.join()
-        
-        # not ok if already have file
-        group = self.group        
-        for case in group.cases:
-            #assert case.y != -1, "group: "+group.getID()+" case.y == -1"
-            group.ys.append(case.y)
-            group.y2s.append(case.y2)
-            group.y3s.append(case.y3)
-            log.debug("group "+group.getID()+" add ys="+str(case.y)+" xs="+str(group.xs)+" ys="+str(group.ys))
-        if (not os.path.exists(self.group.outData)):
-            self.writeData()
-        
+            self.wait_all_complete()
+            
+            for case in group.cases:
+                #assert case.y != -1, "group: "+group.getID()+" case.y == -1"
+                group.ys.append(case.y)
+                group.y2s.append(case.y2)
+                group.y3s.append(case.y3)
+                log.debug("group "+group.getID()+" add ys="+str(case.y)+" xs="+str(group.xs)+" ys="+str(group.ys))
+
+                self.writeData()
+                    
+        log.info("<Line "+self.group.getID()+" finishes")        
                
 lockplt=threading.RLock()        
 
-class Figure(threading.Thread):
+class Figure(Manager):
     def __init__(self, merger):
-        threading.Thread.__init__(self)
+        Manager.__init__(self)
         self.merger = merger
         self.lines = [Line(group) for group in merger.groups]
         
