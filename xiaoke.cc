@@ -104,15 +104,15 @@ int main (int argc, char *argv[])
   cmd.AddValue("consumerClass", "class type of consumer", consumerClass);
   cmd.AddValue("csSize", "size of CS", csSize);
   string ZERO = boost::lexical_cast<string>(std::numeric_limits<uint32_t>::max ());
+  cmd.Parse (argc, argv);
   if (csSize == "Zero" || csSize == "ZERO" ||csSize=="-1") {
 	  csSize = ZERO;
 	  NS_LOG_INFO("2csSize="<<csSize);
   }else{
 	  NS_LOG_INFO("csSize="<<csSize);
   }
+  NS_LOG_INFO("consumerClass"<<consumerClass);
 
-
-  cmd.Parse (argc, argv);
   settings<<"#seed="<<seed<<" duration="<<duration<<" producerNum="<<producerNum<<" csSize="<<csSize<<" consumerClass="<<consumerClass;
 
 
