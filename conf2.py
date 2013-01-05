@@ -94,10 +94,9 @@ class Manager(threading.Thread):
         #signal.signal(signal.SIGTERM, self.signal_handler);
         if self.children != None:        
             for child in self.children:
-                #while threading.active_count() > 0:
-                #    time.sleep(1)
                 if child.isAlive():
                     child.join()
+                    
         log.info("< " +self.id+" ends")
 
             
