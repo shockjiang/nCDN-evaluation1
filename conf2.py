@@ -9,7 +9,7 @@ from script.updateCounter import getUpdateNum
 import logging
 
 log = logging.getLogger(__name__)
-format='%(levelname)5s:%(funcName)5s:%(lineno)3d: %(message)s'   
+format='%(levelname)5s:%(funcName)12s:%(lineno)3d: %(message)s'   
 #http://docs.python.org/2/library/logging.html#logrecord-attributes
 logging.basicConfig(format=format, datefmt='%m/%d/%Y %I:%M:%S %p')
 log.setLevel(logging.DEBUG)
@@ -312,7 +312,7 @@ class Figure(Manager):
                 log.error("plot xs.size!=ys.size. xs="+str(line.xs)+", ys="+str(line.ys)+" group.id="+line.getID())
                 continue
             log.info(line.id+" xs="+str(line.xs)+" ys="+str(line.ys)+ " label="+line.getAtt("label"))
-            plt.plot(line.xs, line.ys, label="label")
+            plt.plot(line.xs, line.ys, label=line.getAtt("label"))
 
 
             
