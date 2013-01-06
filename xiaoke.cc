@@ -75,7 +75,7 @@ int main (int argc, char *argv[])
 
 	LogComponentEnable("ndn.App", LOG_LEVEL_INFO);
 	LogComponentEnable("ndn.Producer", LOG_LEVEL_FUNCTION);
-	//LogComponentEnable("InetTopologyReader", LOG_LEVEL_INFO);
+	LogComponentEnable("InetTopologyReader", LOG_LEVEL_INFO);
 	//LogComponentEnable("ndn.Consumer", LOG_LEVEL_INFO);
 	//LogComponentEnable("ndn.cs.Lru", LOG_LEVEL_INFO);
 	LogComponentEnable("ndn.GlobalRoutingHelper", LOG_LEVEL_DEBUG);
