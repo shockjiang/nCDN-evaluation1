@@ -2,6 +2,13 @@ import matplotlib.pyplot as plt
 import md5
 import os, os.path
 import signal, sys, time
+import string
+import smtplib
+
+TO = ["shock.jiang@gmail.com"]
+FROM = "justok06@foxmail.com"
+SMTP_HOST = "smtp.qq.com"
+
 SIMULATION_SCRIPT = "./waf --run \"xiaoke"
 DATA_LINE_IGNORE_FLAG = "#"
 import inspect
@@ -372,11 +379,13 @@ class Paper(Manager):
         self.figures = figures
         Manager.__init__(self, figures, data)
         #self.Daemon = False
+        self.t0 = time.time()
         
     def run(self): 
         Manager.run(self)
         Manager.waitChildren(self)
-    
+        self.after()
+        
     def getId(self, separater="-"):
         id = self.__class__.__name__
         id += separater+self.getAtt("title")
@@ -385,3 +394,26 @@ class Paper(Manager):
             str += separater + fig.id
         id += separater + self.digest(str)
         return id
+
+    def after(self):
+        self.t1 = time.time()
+        from smtplib import SMTP
+        TO = ["shock.jiang@gmail.com"]
+        FROM = "06jxk@163.com"
+        SMTP_HOST = "smtp.163.com"
+        user= "06jxk"
+        passwords="jiangxiaoke"
+        data = self.id+" ends on "+str(time.strftime('%Y-%m-%d %H:%M:%S',time.localtime(self.t1)))+" after running for "+str(self.t1 - self.t0)+" seconds"
+        mailb = ["paper ends", data]
+        mailh = ["From: "+FROM, "To: shock.jiang@gmail.com", "Subject: Paper ends "+str(time.strftime('%Y-%m-%d %H:%M:%S',time.localtime(self.t1)))]
+        mailmsg = "\r\n\r\n".join(["\r\n".join(mailh), "\r\n".join(mailb)])
+    
+        send = SMTP(SMTP_HOST)
+        send.login(user, passwords)
+        rst = send.sendmail(FROM, TO, mailmsg)
+        if rst != {}:
+            log.warn("send mail error: "+str(rst))
+        else:
+            log.info("sending mail finished")
+            
+        
