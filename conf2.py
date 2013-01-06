@@ -22,7 +22,7 @@ fh.setLevel(logging.WARN)
 log.addHandler(fh)
 
 IS_MT = False #Multi Threads Run
-IS_REFRESH = True
+IS_REFRESH = False
 YS_DIM = 3
 OUT = "./output3/"
 
@@ -259,7 +259,8 @@ class Line(Manager):
             for i in range(len(self.dots)):
                 dot = self.dots[i]
                 dot.x = self.xs[i]
-                dot.ys = self.yss[i]
+                log.debug("xs="+str(self.xs)+", yss="+str(self.yss))
+                dot.ys = self.yss[0][i]
         else:
             for dot in self.dots:
                 self.xs.append(dot.x)
