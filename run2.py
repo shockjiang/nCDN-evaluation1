@@ -36,7 +36,7 @@ def run():
     figs = []
                                     #ConsumerZipfMandelbrot
     for consumer in ["ConsumerCbr", "ConsumerZipfMandelbrot"]:
-        for cs in [1, 10]:
+        for cs in [1,3,5, 10]:
             lines = []
             for producerNum in range(1, MAX_PRODUCER_NUM):
                 dots =[]

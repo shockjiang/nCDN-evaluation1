@@ -75,7 +75,7 @@ int main (int argc, char *argv[])
 
 	LogComponentEnable("ndn.App", LOG_LEVEL_INFO);
 	LogComponentEnable("ndn.Producer", LOG_LEVEL_FUNCTION);
-	//LogComponentEnable("InetTopologyReader", LOG_LEVEL_INFO);
+	LogComponentEnable("InetTopologyReader", LOG_LEVEL_INFO);
 	//LogComponentEnable("ndn.Consumer", LOG_LEVEL_INFO);
 	//LogComponentEnable("ndn.cs.Lru", LOG_LEVEL_INFO);
 	LogComponentEnable("ndn.GlobalRoutingHelper", LOG_LEVEL_DEBUG);
@@ -106,14 +106,14 @@ int main (int argc, char *argv[])
   cmd.Parse (argc, argv);
 
   string ZERO = boost::lexical_cast<string>(std::numeric_limits<uint32_t>::max ());
-
+  cmd.Parse (argc, argv);
   if (csSize == "Zero" || csSize == "ZERO" ||csSize=="-1") {
 	  csSize = ZERO;
 	  NS_LOG_INFO("2csSize="<<csSize);
   }else{
 	  NS_LOG_INFO("csSize="<<csSize);
   }
-
+  NS_LOG_INFO("consumerClass"<<consumerClass);
 
 
   settings<<"#seed="<<seed<<" duration="<<duration<<" producerNum="<<producerNum<<" csSize="<<csSize<<" consumerClass="<<consumerClass;

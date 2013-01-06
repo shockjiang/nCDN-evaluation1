@@ -21,7 +21,7 @@ fh = logging.FileHandler(__name__+".log", mode="w")
 fh.setLevel(logging.WARN)
 log.addHandler(fh)
 
-IS_MT = True #Multi Threads Run
+IS_MT = False #Multi Threads Run
 IS_REFRESH = True
 YS_DIM = 3
 OUT = "./output3/"
