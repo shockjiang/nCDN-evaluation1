@@ -85,7 +85,7 @@ int main (int argc, char *argv[])
 	LogComponentEnable("ndn.fib.Entry", LOG_LEVEL_FUNCTION);
 
 	std::string format ("Inet");
-	std::string input ("src/topology-read/examples/sprint-topology.txt");
+	std::string input ("shock/input/sprint-topology.txt");
 
 	stringstream  settings;
 
@@ -103,7 +103,10 @@ int main (int argc, char *argv[])
   cmd.AddValue("producerNum", "number of producers", producerNum);
   cmd.AddValue("consumerClass", "class type of consumer", consumerClass);
   cmd.AddValue("csSize", "size of CS", csSize);
+  cmd.Parse (argc, argv);
+
   string ZERO = boost::lexical_cast<string>(std::numeric_limits<uint32_t>::max ());
+
   if (csSize == "Zero" || csSize == "ZERO" ||csSize=="-1") {
 	  csSize = ZERO;
 	  NS_LOG_INFO("2csSize="<<csSize);
@@ -112,7 +115,7 @@ int main (int argc, char *argv[])
   }
 
 
-  cmd.Parse (argc, argv);
+
   settings<<"#seed="<<seed<<" duration="<<duration<<" producerNum="<<producerNum<<" csSize="<<csSize<<" consumerClass="<<consumerClass;
 
 
