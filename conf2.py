@@ -1,3 +1,5 @@
+import matplotlib
+matplotlib.use("pdf")
 import matplotlib.pyplot as plt
 import md5
 import os, os.path
@@ -21,8 +23,8 @@ fh = logging.FileHandler(__name__+".log", mode="w")
 fh.setLevel(logging.WARN)
 log.addHandler(fh)
 
-IS_MT = False #Multi Threads Run
-IS_REFRESH = True
+IS_MT = True #Multi Threads Run
+IS_REFRESH = False
 YS_DIM = 3
 OUT = "./output3/"
 

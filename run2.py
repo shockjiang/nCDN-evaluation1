@@ -61,6 +61,7 @@ def run():
     paper = Paper(figs, pd)
     paper.Daemon = False
     paper.start()
+    time.sleep(5)
     log.info("finish0")
     if DEBUG:
         while threading.active_count() > 1:
