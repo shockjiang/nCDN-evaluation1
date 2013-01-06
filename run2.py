@@ -23,15 +23,16 @@ log.addHandler(fh)
 import threading
 
 
-DEBUG = False
+DEBUG = True
+if DEBUG:
+    MAX_DURATION = 3#15
+    MAX_PRODUCER_NUM = 3#7
+    OUT = "./output3-debug/"
+else :
+    MAX_DURATION = 10
+    MAX_PRODUCER_NUM = 7
+
 def run():
-    if DEBUG:
-        MAX_DURATION = 3#15
-        MAX_PRODUCER_NUM = 4#7
-        OUT = "./output3-debug/"
-    else :
-        MAX_DURATION = 10
-        MAX_PRODUCER_NUM = 7
 
     figs = []
                                     #ConsumerZipfMandelbrot

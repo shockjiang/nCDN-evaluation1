@@ -300,7 +300,7 @@ class Figure(Manager):
         data["outType"] = ".pdf"
         data["linestyle"] = "o-"
         Manager.__init__(self, lines, data)
-        
+        self.isRefresh = True
     
     def run(self):
         Manager.run(self)
@@ -378,6 +378,7 @@ class Paper(Manager):
     def __init__(self, figures, data):
         self.figures = figures
         Manager.__init__(self, figures, data)
+        self.isRefresh = True
         #self.Daemon = False
         self.t0 = time.time()
         

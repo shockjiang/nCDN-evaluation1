@@ -29,5 +29,6 @@ def write():
     if rst != {}:
         log.warn("send mail error: "+str(rst))
     else:
-        log.info("sending mail finished")
+        pass
+        #log.info("sending mail finished")
 write()
