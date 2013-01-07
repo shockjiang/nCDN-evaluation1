@@ -9,17 +9,17 @@ TO = ["shock.jiang@gmail.com"]
 FROM = "justok06@foxmail.com"
 SMTP_HOST = "smtp.qq.com"
 
-SIMULATION_SCRIPT = "./waf --run \"xiaoke"
-DATA_LINE_IGNORE_FLAG = "#"
 import inspect
 from script.updateCounter import getUpdateNum
 import logging
+import threading
+
 
 log = logging.getLogger(__name__)
 format='%(levelname)5s:%(funcName)12s:%(lineno)3d: %(message)s'   
 #http://docs.python.org/2/library/logging.html#logrecord-attributes
 logging.basicConfig(format=format, datefmt='%m/%d/%Y %I:%M:%S %p')
-log.setLevel(logging.DEBUG)
+log.setLevel(logging.INFO)
 ch = logging.StreamHandler() #console
 ch.setLevel(logging.WARN)
 log.addHandler(ch)
@@ -28,12 +28,32 @@ fh = logging.FileHandler(__name__+".log", mode="w")
 fh.setLevel(logging.WARN)
 log.addHandler(fh)
 
-IS_MT = False #Multi Threads Run
+
+SIMULATION_SCRIPT = "./waf --run \"xiaoke"
+DATA_LINE_IGNORE_FLAG = "#"
+
+IS_MT = True #Multi Threads Run
 IS_REFRESH = False
 YS_DIM = 3
 OUT = "./output3/"
 
-import threading
+NOT_YET = 0
+READ_YET = 1
+RUN_YET = 2
+UP_YET = 3
+
+
+DEBUG = False
+if DEBUG:
+    MAX_DURATION = 3#15
+    MAX_PRODUCER_NUM = 3#7
+    OUT = "./output3-debug/"
+else :
+    MAX_DURATION = 10
+    MAX_PRODUCER_NUM = 7
+
+
+
 
 class Manager(threading.Thread):
     def get_current_function_name(self):
@@ -43,18 +63,22 @@ class Manager(threading.Thread):
 #        print sys._getframe().f_lineno  
         return inspect.stack()[1][3]
     
-    def __init__(self, children, data={}, atts=[]):
+    def __init__(self, children, data={}, atts=[], id=None):
         threading.Thread.__init__(self)
+        
         self.daemon = True
         self.isMT = IS_MT
-        self.isRefresh = IS_REFRESH 
+        self.isRefresh = IS_REFRESH
+        
+        self.yet = NOT_YET
         
         
         self.children = children
         self.data = data
         self.atts = atts # subset of keys of data, which is used to make the Id
         
-        self.id = self.getId()
+        self.id = id or self.getId()
+        self.setName(self.id)
         self.out = os.path.join(OUT, self.__class__.__name__)
         if not os.path.exists(self.out):
             os.makedirs(self.out)
@@ -79,31 +103,51 @@ class Manager(threading.Thread):
     def run(self):
         log.info("> " +self.id+" begins")
         if (not self.isRefresh) and self.out != None and os.path.exists(self.out) :
-            log.info("= "+self.out+" exists")
+            log.info("= "+self.id+" exists")
             self.read()
+            self.yet = READ_YET
             return
         
         if self.children == None:
+            self.yet = RUN_YET
             return
         
         for child in self.children:
             child.start()
             if not self.isMT:
                 child.join()
-        
+        if not self.isMT:
+            self.yet = RUN_YET
+            
+    
     def signal_handler(signum, frame):
         log.info("get keyboard interrupt") 
         sys.exit();
 
 
     def waitChildren(self):
+        
         #signal.signal(signal.SIGINT,  self.signal_handler); 
         #signal.signal(signal.SIGTERM, self.signal_handler);
-        if self.children != None:        
+        
+        
+        if self.children == None:
+            log.info("< " +self.id+" ends")
+            while self.yet == NOT_YET:
+                time.sleep(1)
+                
+            return
+        
+        while self.yet == NOT_YET:
             for child in self.children:
                 if child.isAlive():
                     child.join()
-                    
+            if self.isMT:
+                self.yet = RUN_YET
+        
+        for child in self.children:
+            assert child.yet != NOT_YET, child.getId()+" is not yet("+str(child.yet)+"), but parent thread ends("+str(self.yet)+")"
+            
         log.info("< " +self.id+" ends")
 
             
@@ -124,7 +168,7 @@ class Manager(threading.Thread):
 class Dot(Manager):
     atts = ["duration", "seed", "producerNum", "consumerClass", "cs"]
     script=SIMULATION_SCRIPT
-    def __init__(self, duration, seed, producerNum, consumerClass, cs):
+    def __init__(self, duration, seed, producerNum, consumerClass, cs, id=None):
         data = {}
         data["duration"] = duration
         data["seed"] = seed
@@ -132,11 +176,11 @@ class Dot(Manager):
         data["consumerClass"] = consumerClass
         data["cs"] = cs
         
-        self.init(data, Dot.atts)
+        self.init(data, Dot.atts, id)
         
-    def init(self, data, atts):    
+    def init(self, data, atts, id):    
         #get self.id and self.out by calling getId()
-        Manager.__init__(self, children=None, data = data, atts = atts)
+        Manager.__init__(self, children=None, data = data, atts = atts, id=id)
         
         self.x = self.getAtt("duration")
         
@@ -162,6 +206,7 @@ class Dot(Manager):
     def run(self):
         log.info("> " +self.id+" begins")
         if (not self.isRefresh) and self.out != None and os.path.exists(self.out) :
+            self.yet = READ_YET
             log.info("= "+self.out+" exists")
 
         else:    
@@ -173,6 +218,8 @@ class Dot(Manager):
                 return
     
         self.read()
+        if self.yet == NOT_YET:
+            self.yet = RUN_YET
         log.debug("self.ys = "+str(self.ys))
         
 #    def waitChildren(self):    
@@ -189,9 +236,10 @@ class Dot(Manager):
         
         
 class Line(Manager):
-    def __init__(self, dots, data):#
+    def __init__(self, dots, data, id=None):#
         self.dots = dots
-        Manager.__init__(self, children=dots, data=data)
+        Manager.__init__(self, children=dots, data=data, id=id)
+        #self.isRefresh = True
         
         self.xs = []
         self.yss = [[] for i in range(YS_DIM)]
@@ -220,11 +268,17 @@ class Line(Manager):
             self.xs.append(x)
             for i in range(1, len(xys)):
                 value = xys[i]
-                self.yss[i-1].append(value)
-                
-        log.info(self.id+" read yss="+str(self.yss))
+                self.yss[i-1].append(value)  
         f.close()
-    
+        
+        for i in range(len(self.dots)):
+            dot = self.dots[i]
+            dot.x = self.xs[i]
+            log.debug("xs="+str(self.xs)+", yss="+str(self.yss))
+            dot.ys = self.yss[0][i]
+            dot.yet = UP_YET
+        log.info(self.id+" read yss="+str(self.yss))    
+            
     def write(self):
         assert len(self.xs)==len(self.yss[0]),  "len(xs)!=len(yss[0]) xs="+str(self.xs)+", yss[0]="+str(self.yss[0])
         f = open(self.out, "w")
@@ -295,11 +349,11 @@ def testLine():
 
 lock=threading.RLock()        
 class Figure(Manager):
-    def __init__(self, lines, data={}):
+    def __init__(self, lines, data={}, id=None):
         self.lines = lines
         data["outType"] = ".pdf"
         data["linestyle"] = "o-"
-        Manager.__init__(self, lines, data)
+        Manager.__init__(self, lines, data, id=id)
         self.isRefresh = True
     
     def run(self):
@@ -398,6 +452,10 @@ class Paper(Manager):
 
     def after(self):
         self.t1 = time.time()
+        data = self.id+" ends on "+str(time.strftime('%Y-%m-%d %H:%M:%S',time.localtime(self.t1)))+" after running for "+str(self.t1 - self.t0)+" seconds"
+        log.info(data)
+        if DEBUG:
+            return
         from smtplib import SMTP
         TO = ["shock.jiang@gmail.com"]
         FROM = "06jxk@163.com"
@@ -412,9 +470,11 @@ class Paper(Manager):
         send = SMTP(SMTP_HOST)
         send.login(user, passwords)
         rst = send.sendmail(FROM, TO, mailmsg)
+        
         if rst != {}:
             log.warn("send mail error: "+str(rst))
         else:
             log.info("sending mail finished")
+        send.close()
             
         

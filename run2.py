@@ -23,31 +23,36 @@ log.addHandler(fh)
 import threading
 
 
-DEBUG = True
-if DEBUG:
-    MAX_DURATION = 3#15
-    MAX_PRODUCER_NUM = 3#7
-    OUT = "./output3-debug/"
-else :
-    MAX_DURATION = 10
-    MAX_PRODUCER_NUM = 7
 
 def run():
 
     figs = []
+    id0 = "-"
                                     #ConsumerZipfMandelbrot
     for consumer in ["ConsumerCbr", "ConsumerZipfMandelbrot"]:
+        id1 = id0 +consumer
         for cs in [1,3,5, 10]:
+            id2 = id1 + "-cs"+str(cs)
+            figid= "FIG"+id2
             lines = []
             for producerNum in range(1, MAX_PRODUCER_NUM):
+                id3 = id2 + "-producer"+str(producerNum)
+                lineid = "LINE"+id3
+                
                 dots =[]
                 for duration in range(1, MAX_DURATION):
-                    dot = Dot(duration, seed=3, producerNum=producerNum, consumerClass=consumer, cs=cs)
+                    id4 = id3+ "-duration"+str(duration)
+                    dotid = "DOT"+id4 
+                    
+                    dot = Dot(duration, seed=3, producerNum=producerNum, consumerClass=consumer, cs=cs, id=dotid)
+                    
+                    
                     dots.append(dot)
                 ld = {}
                 ld["label"] = "Producer="+str(producerNum)
-                line = Line(dots, ld)
                 
+                lineid += "-duration[1,"+str(MAX_DURATION)+"]"
+                line = Line(dots, ld, id=lineid)
                 lines.append(line)
             fd = {}
             
@@ -55,20 +60,29 @@ def run():
             fd["ylabel"] = "# Update"
             fd["grid"] = True
             fd["title"] = "Consumer="+consumer+" cs="+str(cs)
-            fig = Figure(lines, fd)
+            
+            figid += "-producer[1,"+str(MAX_PRODUCER_NUM)+"]"
+            fig = Figure(lines, fd, id=figid)
             figs.append(fig)
     pd = {}
     pd["title"] = "routing"
     paper = Paper(figs, pd)
     paper.Daemon = False
     paper.start()
-    time.sleep(5)
+    #time.sleep(5)
     log.info("finish0")
-    if DEBUG:
+    if True:
         while threading.active_count() > 1:
-            time.sleep(5)
+            if DEBUG:
+                time.sleep(10)
+            else:
+                time.sleep(60)
             log.info("waiting: active threads: "+str(threading.active_count()))
+            if threading.active_count() <3:
+                for t in threading.enumerate():
+                    log.info("threading name = "+t.getName())
     else:
+        log.info("main threading waiting ... threads count="+str(threading.active_count()))
         paper.waitChildren()
 
     log.info("finish")
