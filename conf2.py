@@ -1,3 +1,5 @@
+import matplotlib
+matplotlib.use("pdf")
 import matplotlib.pyplot as plt
 import md5
 import os, os.path
