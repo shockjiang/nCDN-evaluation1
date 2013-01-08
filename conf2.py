@@ -55,8 +55,6 @@ else :
     MAX_PRODUCER_NUM = 7
 
 
-
-
 class Manager(threading.Thread):
     def get_current_function_name(self):
 #        def get_cur_info():  
