@@ -1,0 +1,20 @@
+#	LINE-ConsumerZipfMandelbrot-cs1-producer4-duration[1,10]
+#	./waf --run "xiaoke --duration=1 --seed=3 --producerNum=4 --consumerClass=ConsumerZipfMandelbrot --csSize=1">./output3/Dot/DOT-ConsumerZipfMandelbrot-cs1-producer4-duration1.dat 2>&1
+#	./waf --run "xiaoke --duration=2 --seed=3 --producerNum=4 --consumerClass=ConsumerZipfMandelbrot --csSize=1">./output3/Dot/DOT-ConsumerZipfMandelbrot-cs1-producer4-duration2.dat 2>&1
+#	./waf --run "xiaoke --duration=3 --seed=3 --producerNum=4 --consumerClass=ConsumerZipfMandelbrot --csSize=1">./output3/Dot/DOT-ConsumerZipfMandelbrot-cs1-producer4-duration3.dat 2>&1
+#	./waf --run "xiaoke --duration=4 --seed=3 --producerNum=4 --consumerClass=ConsumerZipfMandelbrot --csSize=1">./output3/Dot/DOT-ConsumerZipfMandelbrot-cs1-producer4-duration4.dat 2>&1
+#	./waf --run "xiaoke --duration=5 --seed=3 --producerNum=4 --consumerClass=ConsumerZipfMandelbrot --csSize=1">./output3/Dot/DOT-ConsumerZipfMandelbrot-cs1-producer4-duration5.dat 2>&1
+#	./waf --run "xiaoke --duration=6 --seed=3 --producerNum=4 --consumerClass=ConsumerZipfMandelbrot --csSize=1">./output3/Dot/DOT-ConsumerZipfMandelbrot-cs1-producer4-duration6.dat 2>&1
+#	./waf --run "xiaoke --duration=7 --seed=3 --producerNum=4 --consumerClass=ConsumerZipfMandelbrot --csSize=1">./output3/Dot/DOT-ConsumerZipfMandelbrot-cs1-producer4-duration7.dat 2>&1
+#	./waf --run "xiaoke --duration=8 --seed=3 --producerNum=4 --consumerClass=ConsumerZipfMandelbrot --csSize=1">./output3/Dot/DOT-ConsumerZipfMandelbrot-cs1-producer4-duration8.dat 2>&1
+#	./waf --run "xiaoke --duration=9 --seed=3 --producerNum=4 --consumerClass=ConsumerZipfMandelbrot --csSize=1">./output3/Dot/DOT-ConsumerZipfMandelbrot-cs1-producer4-duration9.dat 2>&1
+#	None	None
+1	2239	2363	1096
+2	4890	4782	2229
+3	7373	7123	3410
+4	9822	9509	4468
+5	11535	11934	5567
+6	13528	14266	6699
+7	15828	16609	7819
+8	18333	18946	8966
+9	21023	21337	10071
