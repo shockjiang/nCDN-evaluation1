@@ -1,0 +1,20 @@
+#	LINE-ConsumerCbr-csZero-producer5-duration[1,10]
+#	./waf --run "xiaoke --duration=1 --seed=3 --producerNum=5 --consumerClass=ConsumerCbr --csSize=Zero">./output3/Dot/DOT-ConsumerCbr-csZero-producer5-duration1.dat 2>&1
+#	./waf --run "xiaoke --duration=2 --seed=3 --producerNum=5 --consumerClass=ConsumerCbr --csSize=Zero">./output3/Dot/DOT-ConsumerCbr-csZero-producer5-duration2.dat 2>&1
+#	./waf --run "xiaoke --duration=3 --seed=3 --producerNum=5 --consumerClass=ConsumerCbr --csSize=Zero">./output3/Dot/DOT-ConsumerCbr-csZero-producer5-duration3.dat 2>&1
+#	./waf --run "xiaoke --duration=4 --seed=3 --producerNum=5 --consumerClass=ConsumerCbr --csSize=Zero">./output3/Dot/DOT-ConsumerCbr-csZero-producer5-duration4.dat 2>&1
+#	./waf --run "xiaoke --duration=5 --seed=3 --producerNum=5 --consumerClass=ConsumerCbr --csSize=Zero">./output3/Dot/DOT-ConsumerCbr-csZero-producer5-duration5.dat 2>&1
+#	./waf --run "xiaoke --duration=6 --seed=3 --producerNum=5 --consumerClass=ConsumerCbr --csSize=Zero">./output3/Dot/DOT-ConsumerCbr-csZero-producer5-duration6.dat 2>&1
+#	./waf --run "xiaoke --duration=7 --seed=3 --producerNum=5 --consumerClass=ConsumerCbr --csSize=Zero">./output3/Dot/DOT-ConsumerCbr-csZero-producer5-duration7.dat 2>&1
+#	./waf --run "xiaoke --duration=8 --seed=3 --producerNum=5 --consumerClass=ConsumerCbr --csSize=Zero">./output3/Dot/DOT-ConsumerCbr-csZero-producer5-duration8.dat 2>&1
+#	./waf --run "xiaoke --duration=9 --seed=3 --producerNum=5 --consumerClass=ConsumerCbr --csSize=Zero">./output3/Dot/DOT-ConsumerCbr-csZero-producer5-duration9.dat 2>&1
+#	None	None
+1	299	2320	925
+2	1074	4656	1993
+3	3192	7016	3006
+4	6332	9339	4095
+5	9968	11733	5368
+6	13465	14077	6399
+7	16083	16327	7409
+8	18593	18647	8535
+9	21821	20954	9694
