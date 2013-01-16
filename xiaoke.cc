@@ -119,7 +119,7 @@ int main (int argc, char *argv[])
   settings<<"#seed="<<seed<<" duration="<<duration<<" producerNum="<<producerNum<<" csSize="<<csSize<<" consumerClass="<<consumerClass;
 
 
-  Config::SetDefault ("ns3::PointToPointNetDevice::DataRate", StringValue ("10Mbps"));
+  Config::SetDefault ("ns3::PointToPointNetDevice::DataRate", StringValue ("512Kbps"));
   Config::SetDefault ("ns3::PointToPointChannel::Delay", StringValue ("10ms"));
   Config::SetDefault ("ns3::DropTailQueue::MaxPackets", StringValue("20"));
   Config::SetDefault("ns3::ndn::fw::Nacks::EnableNACKs", StringValue("true"));
@@ -212,14 +212,14 @@ int main (int argc, char *argv[])
 		  aPrefix = prefix + "/"+strStream.str();
 		  NS_LOG_LOGIC("prefix="<<aPrefix<<" attached to node "<<i);
 		  consumerHelper.SetPrefix(aPrefix);
-		  consumerHelper.SetAttribute("Frequency", StringValue("50"));
+		  consumerHelper.SetAttribute("Frequency", StringValue("25"));  //128 = 1Mbps(/8/1024), 512Kbps(/8/1024)=64
 		  consumerHelper.SetAttribute ("Randomize", StringValue ("exponential"));
 		  consumerHelper.Install(node);
 	  } else if (nodesFlag[i] == 1){
 		  strStream <<i;
 		  aPrefix = prefix + "/"+strStream.str();
 		  producerHelper.SetPrefix(aPrefix);
-		  producerHelper.SetAttribute ("PayloadSize", StringValue("100"));
+		  producerHelper.SetAttribute ("PayloadSize", StringValue("1024")); //Bytes
 		  producerHelper.Install(node);
 		  ccnxGlobalRoutingHelper.AddOrigin(prefix, node);
 	  }

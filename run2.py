@@ -68,7 +68,7 @@ def run():
             fig = Figure(lines, fd, id=figid)
             figs.append(fig)
     pd = {}
-    pd["title"] = "routing"
+    pd["title"] = "CDNDN"
     paper = Paper(figs, pd)
     paper.Daemon = False
     paper.start()
