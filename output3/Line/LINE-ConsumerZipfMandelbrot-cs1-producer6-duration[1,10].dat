@@ -9,12 +9,12 @@
 #	./waf --run "xiaoke --duration=8 --seed=3 --producerNum=6 --consumerClass=ConsumerZipfMandelbrot --csSize=1">./output3/Dot/DOT-ConsumerZipfMandelbrot-cs1-producer6-duration8.dat 2>&1
 #	./waf --run "xiaoke --duration=9 --seed=3 --producerNum=6 --consumerClass=ConsumerZipfMandelbrot --csSize=1">./output3/Dot/DOT-ConsumerZipfMandelbrot-cs1-producer6-duration9.dat 2>&1
 #	None	None
-1	1902	2255	1099
-2	4866	4563	2102
-3	8129	6818	3069
-4	10163	9123	4068
-5	13605	11460	5045
-6	16111	13713	6007
-7	17027	15963	6724
-8	18601	18193	7447
-9	20541	20480	8342
+1.0	1902.0	2255.0	1099.0
+2.0	4866.0	4563.0	2102.0
+3.0	8129.0	6818.0	3069.0
+4.0	10163.0	9123.0	4068.0
+5.0	13605.0	11460.0	5045.0
+6.0	16111.0	13713.0	6007.0
+7.0	17027.0	15963.0	6724.0
+8.0	18601.0	18193.0	7447.0
+9.0	20541.0	20480.0	8342.0

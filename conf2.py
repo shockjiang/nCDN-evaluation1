@@ -6,10 +6,8 @@ import os, os.path
 import signal, sys, time
 import string
 import smtplib
-
-TO = ["shock.jiang@gmail.com"]
-FROM = "justok06@foxmail.com"
-SMTP_HOST = "smtp.qq.com"
+from scipy import optimize
+import numpy as np
 
 import inspect
 from script.updateCounter import getUpdateNum
@@ -195,7 +193,8 @@ class Dot(Manager):
         self.cmd += " --duration="+str(self.getAtt("duration"))+ " --seed="+str(self.getAtt("seed")) +" --producerNum="+str(self.getAtt("producerNum"))
       
         self.cmd += " --consumerClass="+self.getAtt("consumerClass")
-  
+        cs = self.getAtt("cs")
+
         self.cmd += " --csSize="+str(self.getAtt("cs"))
         
         self.cmd +=  "\"";
@@ -243,9 +242,13 @@ class Line(Manager):
         
         self.xs = []
         self.yss = [[] for i in range(YS_DIM)]
-        self.ys = self.yss[0]
-        self.y2s = self.yss[1]
-        self.y3s = self.yss[2]
+#        self.y1s = self.yss[0]
+#        self.y2s = self.yss[1]
+#        self.y3s = self.yss[2]
+        self.updates = self.yss[0]  #update number
+        self.ists = self.yss[1]  #Interst packets
+        self.datas = self.yss[2] #Data packets
+        #self.ys = [self.datas[i]/self.ists[i] for i in range(len(self.datas[i]))]
         
     def getId(self, separater="-"):
         id = self.__class__.__name__
@@ -264,10 +267,10 @@ class Line(Manager):
             xys = rd.split()
             
             assert len(xys) == len(self.yss) + 1, "reading data error"
-            x = xys[0]
+            x = float(xys[0])
             self.xs.append(x)
             for i in range(1, len(xys)):
-                value = xys[i]
+                value = float(xys[i])
                 self.yss[i-1].append(value)  
         f.close()
         
@@ -313,7 +316,11 @@ class Line(Manager):
         Manager.run(self)
         Manager.waitChildren(self)
         self.after()
+        if self.getAtt("tofit"):
+            self.fit()
         self.write()
+        
+        
         
     def after(self):
         if (not self.isRefresh) and os.path.exists(self.out):
@@ -325,11 +332,31 @@ class Line(Manager):
         else:
             for dot in self.dots:
                 self.xs.append(dot.x)
-                self.ys.append(dot.ys[0])
-                self.y2s.append(dot.ys[1])
-                self.y3s.append(dot.ys[2])
-                log.debug(self.getId()+" add ys="+str(dot.ys[0])+" xs="+str(self.xs)+" yss="+str(self.yss))
+                self.updates.append(dot.ys[0])
+                self.ists.append(dot.ys[1])
+                self.datas.append(dot.ys[2])
+                log.debug(self.getId()+" add ys="+str(self.updates)+" xs="+str(self.xs)+" yss="+str(self.yss))
+        
+        self.ys = [self.datas[i]/self.ists[i] for i in range(len(self.datas))]
+        
     
+    def fitx2(self, x, a, b, c):        
+        return a * x **2 + b * x + c
+    
+    def fitx(self, x, a, b):
+        return a * x + b
+    
+    
+    def fit(self, func=None, guess=None, func_argcount=None):
+        func = func or self.fitx
+        if guess == None:
+            guess = [1 for i in range(func_argcount or func.func_code.co_argcount - 2)]
+        params, params_covariance = optimize.curve_fit(func, np.array(self.xs), np.array(self.ys), guess)
+        self.ysfit = [func(self.xs[i], *params) for i in range(len(self.xs))]
+        self.paramsfit = params
+        self.variancefit = params_covariance
+        log.info(self.id+" fit with "+func.func_code.co_name+" ends. params="+str(params)+" variance="+str(params_covariance))
+        return params, params_covariance
         
 def testDot():
     dot = Dot(duration=1, seed=3, producerNum=2, consumerClass="ConsumerCbr", cs=3)
@@ -369,12 +396,13 @@ class Figure(Manager):
         #plt.figure(figsize=(5,9))
         log.debug("2")
         for line in self.lines:
-            if len(line.xs) != len(line.ys):
+            if len(line.xs) != len(line.updates):
                 log.error("plot xs.size!=ys.size. xs="+str(line.xs)+", ys="+str(line.ys)+" group.id="+line.getID())
                 continue
             log.info(line.id+" xs="+str(line.xs)+" ys="+str(line.ys)+ " label="+line.getAtt("label"))
-            plt.plot(line.xs, line.ys, label=line.getAtt("label"))
-
+            plt.plot(line.xs, line.ys, self.getAtt("linestyle"), label=line.getAtt("label"))
+            if line.getAtt("tofit"):
+                plt.plot(line.xs, line.ysfit, self.getAtt("linestyle"), label=line.getAtt("label")+"-fit")
 
             
         plt.grid(self.getAtt("grid"))
@@ -382,7 +410,9 @@ class Figure(Manager):
         plt.ylabel(self.getAtt("ylabel") or "Y");
         
         plt.title(self.getAtt("title"))
-        plt.legend()
+        
+        #location: http://matplotlib.org/api/pyplot_api.html
+        plt.legend(loc="upper left")
         log.debug("fig save to "+self.out) 
         plt.savefig(self.out)
         #plt.close()
@@ -454,7 +484,7 @@ class Paper(Manager):
         self.t1 = time.time()
         data = self.id+" ends on "+str(time.strftime('%Y-%m-%d %H:%M:%S',time.localtime(self.t1)))+" after running for "+str(self.t1 - self.t0)+" seconds"
         log.info(data)
-        if DEBUG:
+        if True:
             return
         from smtplib import SMTP
         TO = ["shock.jiang@gmail.com"]

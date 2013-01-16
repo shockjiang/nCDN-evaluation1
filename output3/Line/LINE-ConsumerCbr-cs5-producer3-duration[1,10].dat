@@ -9,12 +9,12 @@
 #	./waf --run "xiaoke --duration=8 --seed=3 --producerNum=3 --consumerClass=ConsumerCbr --csSize=5">./output3/Dot/DOT-ConsumerCbr-cs5-producer3-duration8.dat 2>&1
 #	./waf --run "xiaoke --duration=9 --seed=3 --producerNum=3 --consumerClass=ConsumerCbr --csSize=5">./output3/Dot/DOT-ConsumerCbr-cs5-producer3-duration9.dat 2>&1
 #	None	None
-1	718	2412	590
-2	1744	4858	1633
-3	2955	7311	2892
-4	4374	9748	4420
-5	5830	12248	5915
-6	7330	14695	7384
-7	8960	17051	8942
-8	10714	19475	10704
-9	12627	21882	12514
+1.0	718.0	2412.0	590.0
+2.0	1744.0	4858.0	1633.0
+3.0	2955.0	7311.0	2892.0
+4.0	4374.0	9748.0	4420.0
+5.0	5830.0	12248.0	5915.0
+6.0	7330.0	14695.0	7384.0
+7.0	8960.0	17051.0	8942.0
+8.0	10714.0	19475.0	10704.0
+9.0	12627.0	21882.0	12514.0

@@ -31,9 +31,9 @@ def run():
                                     #ConsumerZipfMandelbrot
     for consumer in ["ConsumerCbr", "ConsumerZipfMandelbrot"]:
         id1 = id0 +consumer
-        for cs in [1,3,5, 10]:
+        for cs in ["Zero", 1,3,5, 10, 0]:
             id2 = id1 + "-cs"+str(cs)
-            figid= "FIG"+id2
+            figid= "FIG-DATA=IST"+id2
             lines = []
             for producerNum in range(1, MAX_PRODUCER_NUM):
                 id3 = id2 + "-producer"+str(producerNum)
@@ -52,6 +52,9 @@ def run():
                 ld["label"] = "Producer="+str(producerNum)
                 
                 lineid += "-duration[1,"+str(MAX_DURATION)+"]"
+                if producerNum == 3 and consumer== "ConsumerCbr":
+                    ld["tofit"] = True
+                    
                 line = Line(dots, ld, id=lineid)
                 lines.append(line)
             fd = {}
@@ -76,7 +79,7 @@ def run():
             if DEBUG:
                 time.sleep(10)
             else:
-                time.sleep(60)
+                time.sleep(5)
             log.info("waiting: active threads: "+str(threading.active_count()))
             if threading.active_count() <3:
                 for t in threading.enumerate():
