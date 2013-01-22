@@ -46,9 +46,10 @@
 
 #include <boost/lexical_cast.hpp>
 #include "ns3/topology-read-module.h"
-
+//#include "../../internet/model/rtt-estimator.h"
 #include "ns3/inet-topology-reader.h"
 #include <list>
+#include <ns3/ndnSIM/utils/tracers/ndn-app-delay-tracer.h>
 
 using namespace std;
 using namespace ns3;
@@ -66,7 +67,9 @@ NS_LOG_COMPONENT_DEFINE ("ShockExperiment");
 //	NS_LOG_DEBUG("TTL: " << interest->GetName() << std::endl);
 //}
 //
-
+//static void IstRtt(RttEstimator old_rtt, RttEstimator new_rtt){
+//	cout<<old_rtt<<new_rtt<<endl;
+//}
 // ----------------------------------------------------------------------
 // -- main
 // ----------------------------------------------
@@ -76,7 +79,7 @@ int main (int argc, char *argv[])
 	LogComponentEnable("ndn.App", LOG_LEVEL_INFO);
 	LogComponentEnable("ndn.Producer", LOG_LEVEL_FUNCTION);
 	LogComponentEnable("InetTopologyReader", LOG_LEVEL_INFO);
-	//LogComponentEnable("ndn.Consumer", LOG_LEVEL_INFO);
+	LogComponentEnable("ndn.fw.Nacks", LOG_LEVEL_DEBUG);
 	//LogComponentEnable("ndn.cs.Lru", LOG_LEVEL_INFO);
 	LogComponentEnable("ndn.GlobalRoutingHelper", LOG_LEVEL_DEBUG);
 	LogComponentEnable("ndn.ConsumerZipfMandelbrot", LOG_LEVEL_INFO);
@@ -91,10 +94,13 @@ int main (int argc, char *argv[])
 
 
   int seed = 3;
-  double duration =  1.0;
+  double duration =  3.0;
   int producerNum = 2;
   std::string csSize = "ZERO";
   std::string consumerClass="ConsumerCbr";//consumerCbr
+  std::string nack = "true";
+  std::string tracefile = "";
+
   CommandLine cmd;
   cmd.AddValue ("format", "Format to use for data input [Orbis|Inet|Rocketfuel].", format);
   cmd.AddValue ("input", "Name of the input file.", input);
@@ -103,6 +109,8 @@ int main (int argc, char *argv[])
   cmd.AddValue("producerNum", "number of producers", producerNum);
   cmd.AddValue("consumerClass", "class type of consumer", consumerClass);
   cmd.AddValue("csSize", "size of CS", csSize);
+  cmd.AddValue("nack", "enable Nack or not", nack);
+  cmd.AddValue("trace", "trace file", tracefile);
   cmd.Parse (argc, argv);
 
   string ZERO = boost::lexical_cast<string>(std::numeric_limits<uint32_t>::max ());
@@ -116,13 +124,21 @@ int main (int argc, char *argv[])
   NS_LOG_INFO("consumerClass"<<consumerClass);
 
 
-  settings<<"#seed="<<seed<<" duration="<<duration<<" producerNum="<<producerNum<<" csSize="<<csSize<<" consumerClass="<<consumerClass;
+  if (tracefile == ""){
+		  if (nack == "true") {
+			  tracefile = "shock/output/Nack-enable.txt";
+		  }else  if (nack=="false"){
+			  tracefile = "shock/output/Nack-disable.txt";
+		  }
+  }
 
+  settings<<"#seed="<<seed<<" duration="<<duration<<" producerNum="<<producerNum<<" csSize="<<csSize<<" consumerClass="<<consumerClass;
+  settings<<" nack="<<nack<<" trace="<<tracefile;
 
   Config::SetDefault ("ns3::PointToPointNetDevice::DataRate", StringValue ("512Kbps"));
   Config::SetDefault ("ns3::PointToPointChannel::Delay", StringValue ("10ms"));
   Config::SetDefault ("ns3::DropTailQueue::MaxPackets", StringValue("20"));
-  Config::SetDefault("ns3::ndn::fw::Nacks::EnableNACKs", StringValue("true"));
+  Config::SetDefault("ns3::ndn::fw::Nacks::EnableNACKs", StringValue(nack));
 
   Ptr<TopologyReader> inFile = 0;
   TopologyReaderHelper topoHelp;
@@ -160,8 +176,16 @@ int main (int argc, char *argv[])
       NS_LOG_LOGIC("p2p link "<<i<<" : from "<<iter->GetFromNode()->GetId()<<" to "<<iter->GetToNode()->GetId());
     }
   ndn::StackHelper ccnxHelper;
-  ccnxHelper.SetForwardingStrategy ("ns3::ndn::fw::BestRoute");
-
+  ccnxHelper.SetForwardingStrategy ("ns3::ndn::fw::BestRoute::PerOutFaceLimits",
+  									  "Limit", "ns3::ndn::Limits::Rate");
+  	  ccnxHelper.EnableLimits(true, Seconds(0.1), 1100, 50);
+//  if (nack == "false") {
+//	  ccnxHelper.SetForwardingStrategy ("ns3::ndn::fw::BestRoute");
+//  } else {
+//	  ccnxHelper.SetForwardingStrategy ("ns3::ndn::fw::BestRoute::PerOutFaceLimits",
+//									  "Limit", "ns3::ndn::Limits::Rate");
+//	  ccnxHelper.EnableLimits(true, Seconds(0.1), 1100, 50);
+//  }
   ccnxHelper.SetContentStore ("ns3::ndn::cs::Lru", "MaxSize", csSize);
   ccnxHelper.InstallAll ();
 
@@ -180,12 +204,17 @@ int main (int argc, char *argv[])
 	  producersID[i] = -1;
 
   }
+
+  int maxpdc = 0;
   for (int i=0; i<producerNum; i++){
 	  //SeedManager::SetSeed (seed+seed*i);  // Changes seed from default of 1 to 3
 	  int pdc = rng.GetInteger(0, totnodes-1); //[0, totnodes-1]
 	  if (nodesFlag[pdc] >0){
 		  i--;
 		  continue;
+	  }
+	  if (pdc > maxpdc){
+		  maxpdc = pdc;
 	  }
 	  nodesFlag[pdc] = 1;
 	  producersID[i] = pdc;
@@ -204,20 +233,26 @@ int main (int argc, char *argv[])
   for (int i=0; i<totnodes; i++){
 	  stringstream strStream;
 	  node = nodes.Get(i);
-	  if (nodesFlag[i] ==0){
+	  if (nodesFlag[i] ==0){  //consumer /prefix/producerID
 		  int pdc = i % producerNum;
 		  pdc = producersID[pdc];
-
+		  pdc = i;
 		  strStream << pdc;
 		  aPrefix = prefix + "/"+strStream.str();
+		  //aPrefix = prefix;
 		  NS_LOG_LOGIC("prefix="<<aPrefix<<" attached to node "<<i);
+		  //node->TraceConnectWithoutContext("RTT", MakeCallback(&IstRtt));
+		 // node->TraceConnectWithoutContext("PathWeightsTrace", MakeCallback(&IstRtt));
+
 		  consumerHelper.SetPrefix(aPrefix);
 		  consumerHelper.SetAttribute("Frequency", StringValue("25"));  //128 = 1Mbps(/8/1024), 512Kbps(/8/1024)=64
 		  consumerHelper.SetAttribute ("Randomize", StringValue ("exponential"));
 		  consumerHelper.Install(node);
-	  } else if (nodesFlag[i] == 1){
+	  } else if (nodesFlag[i] == 1){ //producer
 		  strStream <<i;
 		  aPrefix = prefix + "/"+strStream.str();
+		  aPrefix = prefix;
+		  Names::Add("producer"+strStream.str(), node);
 		  producerHelper.SetPrefix(aPrefix);
 		  producerHelper.SetAttribute ("PayloadSize", StringValue("1024")); //Bytes
 		  producerHelper.Install(node);
@@ -231,6 +266,9 @@ int main (int argc, char *argv[])
   NS_LOG_INFO(settings.str());
 
 
+  boost::tuple< boost::shared_ptr<std::ostream>, std::list<Ptr<ndn::AppDelayTracer> > >
+    tracers = ndn::AppDelayTracer::InstallAll (tracefile);
+
 
   NS_LOG_INFO ("Run Simulation.");
   Simulator::Stop(Seconds(duration));
@@ -239,7 +277,7 @@ int main (int argc, char *argv[])
 
   delete[] producersID;
   delete[] nodesFlag;
-
+  NS_LOG_INFO(settings.str());
   NS_LOG_INFO ("Done.");
 
   return 0;

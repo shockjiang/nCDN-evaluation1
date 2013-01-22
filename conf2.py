@@ -1,5 +1,7 @@
 import matplotlib
 matplotlib.use("pdf")
+import platform
+HOSTOS = platform.system()
 import matplotlib.pyplot as plt
 import md5
 import os, os.path
@@ -11,6 +13,7 @@ import numpy as np
 
 import inspect
 from script.updateCounter import getUpdateNum
+from script.cmp import cmp
 import logging
 import threading
 
@@ -34,8 +37,8 @@ DATA_LINE_IGNORE_FLAG = "#"
 
 IS_MT = True #Multi Threads Run
 IS_REFRESH = False
-YS_DIM = 3
-OUT = "./output3/"
+YS_DIM = 10
+OUT = "outputcdn"
 
 NOT_YET = 0
 READ_YET = 1
@@ -44,15 +47,26 @@ UP_YET = 3
 
 
 DEBUG = False
+
+
+if HOSTOS.startswith("Darwin"):
+    DEBUG = True
+
 if DEBUG:
-    MAX_DURATION = 3#15
-    MAX_PRODUCER_NUM = 3#7
-    OUT = "./output3-debug/"
+    MAX_DURATION = 8#15
+    MAX_PRODUCER_NUM = 4#7
+    CS_LIST =["Zero"]
+    OUT += "-debug"
+    CONSUMER_CLASS_LIST = ["ConsumerCbr"]
+    CONSUMER_CLASS_LIST = ["ConsumerCbr", "ConsumerZipfMandelbrot"]
+    
 else :
     MAX_DURATION = 10
     MAX_PRODUCER_NUM = 7
-
-
+    CS_LIST = ["Zero", 1,3,5, 10, 0]
+    CS_LIST = ["Zero", 1,3,5, 10, 0]
+    CONSUMER_CLASS_LIST = ["ConsumerCbr", "ConsumerZipfMandelbrot"]
+    
 class Manager(threading.Thread):
     def get_current_function_name(self):
 #        def get_cur_info():  
@@ -164,18 +178,37 @@ class Manager(threading.Thread):
         return m.hexdigest()
     
 class Dot(Manager):
-    atts = ["duration", "seed", "producerNum", "consumerClass", "cs"]
+    atts = ["duration", "seed", "producerNum", "consumerClass", "cs", "nack"]
     script=SIMULATION_SCRIPT
-    def __init__(self, duration, seed, producerNum, consumerClass, cs, id=None):
-        data = {}
-        data["duration"] = duration
-        data["seed"] = seed
-        data["producerNum"] = producerNum
-        data["consumerClass"] = consumerClass
-        data["cs"] = cs
+    
+    def __init__(self, data, id=None):
+        Manager.__init__(self, children=None, data = data, atts = Dot.atts, id=id)
+        self.trace = os.path.join(OUT, self.__class__.__name__, self.id+".trace")
+        self.data["trace"] = os.path.join("./shock", self.trace)
+        self.x = self.getAtt("duration")
         
-        self.init(data, Dot.atts, id)
         
+        self.ys = []
+    #       
+        self.cmd = Dot.script
+        for k, v in data.iteritems():
+            self.cmd += " --"+str(k)+"="+str(data[k])
+
+        self.cmd +=  "\"";
+        self.cmd += ">"+self.out+" 2>&1"    
+    
+#    def __init__(self, duration, seed, producerNum, consumerClass, cs, id=None):
+#        data = {}
+#        data["duration"] = duration
+#        data["seed"] = seed
+#        data["producerNum"] = producerNum
+#        data["consumerClass"] = consumerClass
+#        data["cs"] = cs
+#        
+#        self.init(data, Dot.atts, id)
+#    
+
+            
     def init(self, data, atts, id):    
         #get self.id and self.out by calling getId()
         Manager.__init__(self, children=None, data = data, atts = atts, id=id)
@@ -227,12 +260,18 @@ class Dot(Manager):
         
     def read(self):
         cnt = getUpdateNum(self.out)
-        if len(cnt) != YS_DIM:
-            log.warn("len(cnt) != YS_DIM. cnt="+str(cnt))
-            return
+            #return
         for i in range(len(cnt)):
             self.ys.append(cnt[i])
         
+        cnt = cmp(self.trace)
+        self.ys += cnt
+        
+        log.info(self.id+" ys="+str(self.ys))
+        
+        if len(self.ys) != YS_DIM:
+            log.warn("len(self.ys) != YS_DIM. cnt="+str(self.ys))
+
         
 class Line(Manager):
     def __init__(self, dots, data, id=None):#
@@ -247,7 +286,8 @@ class Line(Manager):
 #        self.y3s = self.yss[2]
         self.updates = self.yss[0]  #update number
         self.ists = self.yss[1]  #Interst packets
-        self.datas = self.yss[2] #Data packets
+        self.datas = self.yss[2] #Data generating packets
+        self.meets = self.yss[3] #Data arrives 
         #self.ys = [self.datas[i]/self.ists[i] for i in range(len(self.datas[i]))]
         
     def getId(self, separater="-"):
@@ -261,9 +301,10 @@ class Line(Manager):
         log.info(self.id+" read data")
         f = open(self.out)
         for rd in f.readlines():
+            rd = rd.strip()
             if rd.startswith(DATA_LINE_IGNORE_FLAG):
                 continue
-            rd = rd.strip()
+            
             xys = rd.split()
             
             assert len(xys) == len(self.yss) + 1, "reading data error"
@@ -290,16 +331,26 @@ class Line(Manager):
         for cmd in self.getCMDs():
             f.write(DATA_LINE_IGNORE_FLAG + "\t" + cmd+"\n")
             
-        f.write(DATA_LINE_IGNORE_FLAG+"\t"+str(self.getAtt("xlabel"))+"\t"+str(self.getAtt("ylabel"))+"\n")
+        #f.write(DATA_LINE_IGNORE_FLAG+"\tduration"+"\tChanging#"+"\tIST#"+"\tDataNew#"+"\tDataArrive#\tNack#\n")
+        titles = ["#duration", "update#", "Interest#", "DataNew#", "DataMet#", "Nack#"]
+        #  return [rd, avglast, avgfull, avghop, avgretx]
+        titles +=["record#", "ALastDelay", "AFullDelay", "AvgHop", "AvgRetx#"]
+        for i in range(len(titles)):
+            title = titles[i]
+            f.write("%12.10s(%d)"%(title, i-1))
+        f.write("\n")
         
         for i in range(len(self.xs)):
             x = self.xs[i]
-            line = str(x)
+            f.write("%15.10s"%(x))
+            #line = str(x)
             for j in range(len(self.yss)):
-                value = self.yss[j][i]
-                line += "\t" + str(value)
-            line += "\n"
-            f.write(line)
+                #print "i=",i,", j=",j
+                value = str(self.yss[j][i])
+                f.write("%15.10s"%(value))
+                #line += "\t" + str(value)
+            #line += "\n"
+            f.write("\n")
         f.flush()
         f.close()
     
@@ -332,14 +383,27 @@ class Line(Manager):
         else:
             for dot in self.dots:
                 self.xs.append(dot.x)
-                self.updates.append(dot.ys[0])
-                self.ists.append(dot.ys[1])
-                self.datas.append(dot.ys[2])
+#                self.updates.append(dot.ys[0])
+#                self.ists.append(dot.ys[1])
+#                self.datas.append(dot.ys[2])
+#                self.meets.append(dot.ys[3])
+                for i in range(len(dot.ys)):
+                    v = dot.ys[i]
+                    self.yss[i].append(v)
                 log.debug(self.getId()+" add ys="+str(self.updates)+" xs="+str(self.xs)+" yss="+str(self.yss))
         
-        self.ys = [self.datas[i]/self.ists[i] for i in range(len(self.datas))]
-        
-    
+        #self.ys = [self.datas[i]/self.ists[i] for i in range(len(self.datas))]
+        Yindex = self.getAtt("Yindex") or 0
+        if type(Yindex) == int:
+            self.ys = self.yss[int(Yindex)] 
+        elif type(Yindex) == str:
+            tmps = Yindex.split(".")
+            assert len(tmps) == 2, "tmps="+str(tmps)
+            t1 = int(tmps[0])
+            t2 = int(tmps[1])
+            self.ys = [self.yss[t1][i]/float(self.yss[t2][i]) for i in range(len(self.xs))]
+            
+            
     def fitx2(self, x, a, b, c):        
         return a * x **2 + b * x + c
     
@@ -397,7 +461,7 @@ class Figure(Manager):
         log.debug("2")
         for line in self.lines:
             if len(line.xs) != len(line.updates):
-                log.error("plot xs.size!=ys.size. xs="+str(line.xs)+", ys="+str(line.ys)+" group.id="+line.getID())
+                log.error("plot xs.size!=ys.size. xs="+str(line.xs)+", yss="+str(line.yss)+" group.id="+line.id)
                 continue
             log.info(line.id+" xs="+str(line.xs)+" ys="+str(line.ys)+ " label="+line.getAtt("label"))
             plt.plot(line.xs, line.ys, self.getAtt("linestyle"), label=line.getAtt("label"))
@@ -484,7 +548,7 @@ class Paper(Manager):
         self.t1 = time.time()
         data = self.id+" ends on "+str(time.strftime('%Y-%m-%d %H:%M:%S',time.localtime(self.t1)))+" after running for "+str(self.t1 - self.t0)+" seconds"
         log.info(data)
-        if True:
+        if HOSTOS.startswith("Darwin"):
             return
         from smtplib import SMTP
         TO = ["shock.jiang@gmail.com"]

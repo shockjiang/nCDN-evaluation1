@@ -21,52 +21,93 @@ fh.setLevel(logging.INFO)
 log.addHandler(fh)
 
 import threading
+#update#(0)   Interest#(1)    DataNew#(2)    DataMet#(3)       Nack#(4)     
+#record#(5)  ALastDelay(6)  AFullDelay(7)      AvgHop(8)    AvgRetx#(9)
+YLABELS = ["UPDATE", "INTEREST", "DataNew", "DataMet", "Nack", 
+          "Record", "Avg Last Delay", "Avg Full Delay", "Avg Hop Length", "Avg Retx"]
+YLABEL_DIC = {}
 
-
+for i in range(len(YLABELS)):
+    YLABEL_DIC[i] = YLABELS[i]
+    
+YLABEL_DIC["0.3"] = "Update/Data"
+YLABEL_DIC["4.3"] = "Nack/Data"
+YLABEL_DIC["1.3"] = "Interest/Data"
+#Yindex = 9
 
 def run():
+    #for Yindex in [7, 9, 3, 8, "0.3", "4.3"]:
+    for Yindex in ["1.3", "0.3", "4.3"]:
+        run2(Yindex)
+        
+def run2(Yindex):
 
     figs = []
-    id0 = "-"
-                                    #ConsumerZipfMandelbrot
-    for consumer in ["ConsumerCbr", "ConsumerZipfMandelbrot"]:
-        id1 = id0 +consumer
-        for cs in ["Zero", 1,3,5, 10, 0]:
+    id0 = ""
+    for consumer in CONSUMER_CLASS_LIST:
+        id1 = id0 + "-"+consumer
+        
+        for cs in CS_LIST:
             id2 = id1 + "-cs"+str(cs)
-            figid= "FIG-DATA=IST"+id2
             lines = []
+            
+            #
+            # The following you can add more lines into one Figure
+            #
+            
             for producerNum in range(1, MAX_PRODUCER_NUM):
-                id3 = id2 + "-producer"+str(producerNum)
-                lineid = "LINE"+id3
+                id3 = id2 + "-producer"+str(producerNum)            
+               
+                for nack in ["true", "false"]:
+                    id4 = id3 + "-nack"+nack
+                #
+                # The above you can add more lines into one Figure
+                #
+                                            
+                    dots = []
+                    for duration in range(1, MAX_DURATION):
+                        id5 = id4+ "-duration"+str(duration)
+    
+                        dotid = "DOT"+id5
+                        dd = {}
+                        dd["duration"] = duration
+                        dd["seed"] = 3
+                        dd["producerNum"] = producerNum
+                        dd["consumerClass"] = consumer
+                        dd["csSize"] = cs
+                        dd["nack"] = nack
+                        dot = Dot(data=dd, id=dotid)
+                        
+                        #dot = Dot(duration, seed=3, producerNum=producerNum, consumerClass=consumer, cs=cs, id=dotid)    
+                        dots.append(dot)
                 
-                dots =[]
-                for duration in range(1, MAX_DURATION):
-                    id4 = id3+ "-duration"+str(duration)
-                    dotid = "DOT"+id4 
-                    
-                    dot = Dot(duration, seed=3, producerNum=producerNum, consumerClass=consumer, cs=cs, id=dotid)
-                    
-                    
-                    dots.append(dot)
-                ld = {}
-                ld["label"] = "Producer="+str(producerNum)
-                
-                lineid += "-duration[1,"+str(MAX_DURATION)+"]"
-                if producerNum == 3 and consumer== "ConsumerCbr":
-                    ld["tofit"] = True
-                    
-                line = Line(dots, ld, id=lineid)
-                lines.append(line)
+                    ld = {}
+                    ld["label"] = "Producer="+str(producerNum)+", Nack="+nack
+                    #update#(0)   Interest#(1)    DataNew#(2)    DataMet#(3)       Nack#(4)     
+                    #record#(5)  ALastDelay(6)  AFullDelay(7)      AvgHop(8)    AvgRetx#(9)
+                    ld["Yindex"] = Yindex
+                    lineid ="LINE" + id4 + "-duration[1,"+str(MAX_DURATION-1)+"]"
+#                    if producerNum == 3 and consumer== "ConsumerCbr":
+#                        ld["tofit"] = True
+                        
+                    line = Line(dots, ld, id=lineid)
+                    lines.append(line)
+                #for duration    
+            #for producernum
             fd = {}
             
-            fd["xlabel"] = "Duration (second)"
-            fd["ylabel"] = "# Update"
+            fd["xlabel"] = "Simulation Duration (second)"
+            fd["ylabel"] = YLABEL_DIC[Yindex]
             fd["grid"] = True
-            fd["title"] = "Consumer="+consumer+" cs="+str(cs)
+            fd["title"] = fd["ylabel"] + "\nConsumer="+consumer+" cs="+str(cs)
             
-            figid += "-producer[1,"+str(MAX_PRODUCER_NUM)+"]"
+            figid= "FIG-"+fd["ylabel"].replace(" ", "").replace("/", "=")+id2
+            figid += "-producer[1,"+str(MAX_PRODUCER_NUM-1)+"]"
             fig = Figure(lines, fd, id=figid)
             figs.append(fig)
+            #for cs
+        #for nack
+    #for consumer
     pd = {}
     pd["title"] = "CDNDN"
     paper = Paper(figs, pd)
@@ -89,6 +130,7 @@ def run():
         paper.waitChildren()
 
     log.info("finish")
+    
 import signal 
 import sys
   
