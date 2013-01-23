@@ -1,3 +1,4 @@
+import sys
 import matplotlib
 matplotlib.use("pdf")
 import platform
@@ -8,8 +9,7 @@ import os, os.path
 import signal, sys, time
 import string
 import smtplib
-from scipy import optimize
-import numpy as np
+
 
 import inspect
 from script.updateCounter import getUpdateNum
@@ -412,6 +412,9 @@ class Line(Manager):
     
     
     def fit(self, func=None, guess=None, func_argcount=None):
+        from scipy import optimize
+        import numpy as np
+
         func = func or self.fitx
         if guess == None:
             guess = [1 for i in range(func_argcount or func.func_code.co_argcount - 2)]
