@@ -38,7 +38,7 @@ DATA_LINE_IGNORE_FLAG = "#"
 IS_MT = True #Multi Threads Run
 IS_REFRESH = False
 YS_DIM = 10
-OUT = "outputcdn"
+OUT = "output2"
 
 NOT_YET = 0
 READ_YET = 1
@@ -130,11 +130,6 @@ class Manager(threading.Thread):
                 child.join()
         if not self.isMT:
             self.yet = RUN_YET
-            
-    
-    def signal_handler(signum, frame):
-        log.info("get keyboard interrupt") 
-        sys.exit();
 
 
     def waitChildren(self):
@@ -178,7 +173,7 @@ class Manager(threading.Thread):
         return m.hexdigest()
     
 class Dot(Manager):
-    atts = ["duration", "seed", "producerNum", "consumerClass", "cs", "nack"]
+    atts = {"trace":"trace.trace", "duration":3, "seed":3, "producerNum":2, "consumerClass":"ConsumerCbr", "cs":"Zero", "nack":"true"}
     script=SIMULATION_SCRIPT
     
     def __init__(self, data, id=None):
@@ -192,7 +187,8 @@ class Dot(Manager):
     #       
         self.cmd = Dot.script
         for k, v in data.iteritems():
-            self.cmd += " --"+str(k)+"="+str(data[k])
+            if k in Dot.atts:
+                self.cmd += " --"+str(k)+"="+str(data[k])
 
         self.cmd +=  "\"";
         self.cmd += ">"+self.out+" 2>&1"    
@@ -247,6 +243,7 @@ class Dot(Manager):
             if rst != 0:
                 log.error("CMD: "+self.cmd+" return "+str(rst)+" (0 is OK)")
                 os.remove(self.out)
+                os.remove(self.trace)
                 return
     
         self.read()
@@ -277,7 +274,7 @@ class Line(Manager):
     def __init__(self, dots, data, id=None):#
         self.dots = dots
         Manager.__init__(self, children=dots, data=data, id=id)
-        #self.isRefresh = True
+        self.isRefresh = False
         
         self.xs = []
         self.yss = [[] for i in range(YS_DIM)]

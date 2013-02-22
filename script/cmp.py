@@ -76,15 +76,15 @@ def cmp(fp= TRACE_FILE):
         
         prev = parts
     
-    print "fullsum="+str(fullsum)+", lastsum="+str(lastsum)+" records:"+str(len(lines))+" diffcnt="+str(diffcnt)
+    #print "fullsum="+str(fullsum)+", lastsum="+str(lastsum)+" records:"+str(len(lines))+" diffcnt="+str(diffcnt)
     rd = float(len(lines)/2)
     avglast = lastsum/rd
     avgfull = fullsum/rd
     avghop = hopsum/rd
     avgretx = retxsum/rd
-    print "fullsum avg="+str(fullsum/rd)+", lastsum avg="+str(lastsum/rd)+", hop avg="+str(hopsum/float(rd))+", retx avg="+str(retxsum/float(rd))
+    #print "fullsum avg="+str(fullsum/rd)+", lastsum avg="+str(lastsum/rd)+", hop avg="+str(hopsum/float(rd))+", retx avg="+str(retxsum/float(rd))
     
-    print "seqMax="+str(seqmax)
+    #print "seqMax="+str(seqmax)
     for k, v in dic.iteritems():
         if v > 1:
             print "key="+str(k)+" value="+v

@@ -43,7 +43,11 @@
 #include "ns3/ndn-interest.h"
 #include "ns3/ndn-content-object.h"
 #include "ns3/ndnSIM-module.h"
+#include "ns3/ndn-app.h"
+//#include "ns3/ndn-producer.h"
+#include "../src/ndnSIM/apps/ndn-producer.h"
 
+#include <boost/ref.hpp>
 #include <boost/lexical_cast.hpp>
 #include "ns3/topology-read-module.h"
 //#include "../../internet/model/rtt-estimator.h"
@@ -53,12 +57,17 @@
 
 using namespace std;
 using namespace ns3;
+using namespace ndn;
 NS_LOG_COMPONENT_DEFINE ("ShockExperiment");
 
 
 //static std::list<unsigned int> data;
 //typedef ns3::ndn::InterestHeader InterestHeader;
 
+static void SinkIst(Ptr<const InterestHeader> header, Ptr<App> app, Ptr<Face> face)
+{
+	NS_LOG_INFO("+ Respodning with ContentObject "<< boost::cref(*header));
+}
 //static void SinkRx (const Ptr<const InterestHeader> &interest, Ptr<Packet> packet)
 //{
 //
@@ -253,9 +262,13 @@ int main (int argc, char *argv[])
 		  aPrefix = prefix + "/"+strStream.str();
 		  aPrefix = prefix;
 		  Names::Add("producer"+strStream.str(), node);
+
 		  producerHelper.SetPrefix(aPrefix);
 		  producerHelper.SetAttribute ("PayloadSize", StringValue("1024")); //Bytes
-		  producerHelper.Install(node);
+		  ApplicationContainer appCon = producerHelper.Install(node);
+
+		  //appCon.Get(0)
+		  node->GetApplication(0)->TraceConnectWithoutContext("ReceivedInterests", MakeCallback(&SinkIst));
 		  ccnxGlobalRoutingHelper.AddOrigin(prefix, node);
 	  }
   }
