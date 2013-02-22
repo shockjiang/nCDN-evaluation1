@@ -119,15 +119,7 @@ class Case(Manager, threading.Thread):
         self.data
     """
     
-    UPDATE_FLAG = "change status from" #green-yellow-red.cc UpdateStatus, ndn-fib-entry.cc Row90,
-    INTEREST_FLAG = "> Interest for"  #ndn-consumer.cc Row210
-    DATA_FLAG = "+ Respodning with ContentObject" #xiaoke.cc SinkIst, a TracedCallback
-    DATA_ARRIVE = "< DATA for" #ndn-consumer.cc Row256
-    NACK_ARRIVE = "< NACK for" #ndn-consumer.cc Row300
-    STATS_FLAGS = [UPDATE_FLAG, INTEREST_FLAG, DATA_FLAG, DATA_ARRIVE, NACK_ARRIVE]
-    
-    DATA_LABELS = ["Update", "Ist", "DataNew", "DataMet", "NackMet"]
-    
+
     class DataSchema:
         def __init__(self, label, keyword, match="left", desc=None):
             self.label = label
@@ -160,9 +152,17 @@ class Case(Manager, threading.Thread):
                 elif schema.match == "middle":
                     if row.find(shema.keyword)>=0:
                         self.counts[i] += 1
+    UPDATE_FLAG = "- Change Status from" #green-yellow-red.cc UpdateStatus, ndn-fib-entry.cc Row90,
+    INTEREST_FLAG = "> Interest for"  #ndn-consumer.cc Row210
+    DATA_FLAG = "+ Respodning with ContentObject" #xiaoke.cc SinkIst, a TracedCallback
+    DATA_ARRIVE = "< DATA for" #ndn-consumer.cc Row256
+    NACK_ARRIVE = "< NACK for" #ndn-consumer.cc Row300
+    STATS_FLAGS = [UPDATE_FLAG, INTEREST_FLAG, DATA_FLAG, DATA_ARRIVE, NACK_ARRIVE]
+    
+    DATA_LABELS = ["Update", "Ist", "DataNew", "DataMet", "NackMet"]
             
             
-    FIB_UPDATE = DataSchema(label="Update", keyword="change status from", desc="FIB entry changing status", match="left")
+    FIB_UPDATE = DataSchema(label="Update", keyword=UPDATE_FLAG, desc="FIB entry changing status", match="left")
     IST_NEW = DataSchema(label="Ist", keyword="> Interest for", match="left", desc="Interest Generating")
     DATA_NEW = DataSchema(label="DataNew", keyword="+ Respodning with ContentObject", match="left", desc="producer gernates new content")
     DATA_GOTTEN = DataSchema(label="DataGotten", keyword="< DATA for", match="left", desc="consumer got its data")

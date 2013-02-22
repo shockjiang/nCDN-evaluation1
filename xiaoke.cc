@@ -46,6 +46,7 @@
 #include "ns3/ndn-app.h"
 //#include "ns3/ndn-producer.h"
 #include "../src/ndnSIM/apps/ndn-producer.h"
+#include "../src/ndnSIM/model/fib/ndn-fib-entry.h"
 
 #include <boost/ref.hpp>
 #include <boost/lexical_cast.hpp>
@@ -63,6 +64,9 @@ NS_LOG_COMPONENT_DEFINE ("ShockExperiment");
 
 //static std::list<unsigned int> data;
 //typedef ns3::ndn::InterestHeader InterestHeader;
+static void TraceStatus(Status old, Status now) {
+	NS_LOG_INFO("- Change Status from")
+}
 
 static void SinkIst(Ptr<const InterestHeader> header, Ptr<App> app, Ptr<Face> face)
 {
