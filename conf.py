@@ -282,12 +282,13 @@ class Dot(Manager):
             if type(yindex) == int:
                 self.y = case.data[yindex] 
             elif type(yindex) == str:
-                tmps = yindex.split(".")
+                tmps = yindex.split(".")  #4.1
                 assert len(tmps) == 2, "tmps="+str(tmps)
                 t1 = int(tmps[0])
                 t2 = int(tmps[1])
                 if case.data[t2] == 0:
                     self.y = 0
+                    log.warn(self.id+" gives an warnning. self.y=0")
                 else:
                     self.y = case.data[t1]/float(case.data[t2])
                 
@@ -456,7 +457,11 @@ class God(Manager):
                     
                     dot = Dot(id="Dot"+atts, case=case, x=duration, yindex=yindex)
                     dots.append(dot)
-                line = Line(id=lineid, dots=dots, label=lineid)
+                if nack == "true":
+                    linelabel = "NDN"
+                else:
+                    linelabel = "IP"
+                line = Line(id=lineid, dots=dots, label=linelabel)
                 lines.append(line)
             fig = Figure(id=figid, lines=lines)
             fig.draw()   

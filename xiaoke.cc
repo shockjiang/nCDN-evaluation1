@@ -47,7 +47,7 @@
 //#include "ns3/ndn-producer.h"
 #include "../src/ndnSIM/apps/ndn-producer.h"
 #include "../src/ndnSIM/model/fib/ndn-fib-entry.h"
-
+#include <boost/foreach.hpp>
 #include <boost/ref.hpp>
 #include <boost/lexical_cast.hpp>
 #include "ns3/topology-read-module.h"
@@ -64,8 +64,8 @@ NS_LOG_COMPONENT_DEFINE ("ShockExperiment");
 
 //static std::list<unsigned int> data;
 //typedef ns3::ndn::InterestHeader InterestHeader;
-static void TraceStatus(Status old, Status now) {
-	NS_LOG_INFO("- Change Status from")
+static void TraceStatus(fib::FaceMetric::Status old, fib::FaceMetric::Status now) {
+	NS_LOG_INFO("- Change Status from "<<old<<" to "<<now);
 }
 
 static void SinkIst(Ptr<const InterestHeader> header, Ptr<App> app, Ptr<Face> face)
@@ -220,6 +220,7 @@ int main (int argc, char *argv[])
 
   int maxpdc = 0;
   for (int i=0; i<producerNum; i++){
+
 	  //SeedManager::SetSeed (seed+seed*i);  // Changes seed from default of 1 to 3
 	  int pdc = rng.GetInteger(0, totnodes-1); //[0, totnodes-1]
 	  if (nodesFlag[pdc] >0){
@@ -246,6 +247,7 @@ int main (int argc, char *argv[])
   for (int i=0; i<totnodes; i++){
 	  stringstream strStream;
 	  node = nodes.Get(i);
+
 	  if (nodesFlag[i] ==0){  //consumer /prefix/producerID
 		  int pdc = i % producerNum;
 		  pdc = producersID[pdc];
@@ -256,6 +258,8 @@ int main (int argc, char *argv[])
 		  NS_LOG_LOGIC("prefix="<<aPrefix<<" attached to node "<<i);
 		  //node->TraceConnectWithoutContext("RTT", MakeCallback(&IstRtt));
 		 // node->TraceConnectWithoutContext("PathWeightsTrace", MakeCallback(&IstRtt));
+
+
 
 		  consumerHelper.SetPrefix(aPrefix);
 		  consumerHelper.SetAttribute("Frequency", StringValue("25"));  //128 = 1Mbps(/8/1024), 512Kbps(/8/1024)=64
@@ -279,6 +283,22 @@ int main (int argc, char *argv[])
 
 
   ccnxGlobalRoutingHelper.CalculateRoutes ();
+
+  for (int i=0; i<totnodes; i++){
+	  node = nodes.Get(i);
+
+	  Ptr<ndn::Fib> fib = node->GetObject<ndn::Fib> ();
+
+	  for (Ptr<ndn::fib::Entry> entry = fib->Begin ();
+		   entry != fib->End ();
+		   entry = fib->Next (entry))
+		{
+		  BOOST_FOREACH (const ndn::fib::FaceMetric & faceMetric, entry->m_faces)
+			{
+			  const_cast<ndn::fib::FaceMetric &> (faceMetric).GetStatusTrace ().ConnectWithoutContext (MakeCallback (&TraceStatus));
+			}
+		}
+  }
 
   NS_LOG_INFO(settings.str());
 
