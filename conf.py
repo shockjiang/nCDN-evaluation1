@@ -41,7 +41,7 @@ if DEBUG:
     
 else :
     MAX_DURATION = 10
-    MAX_PRODUCER_NUM = 7
+    MAX_PRODUCER_NUM = 4
     CS_LIST = ["Zero"]
     CONSUMER_CLASS_LIST = ["ConsumerCbr", "ConsumerZipfMandelbrot"]
 
