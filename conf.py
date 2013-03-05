@@ -32,16 +32,16 @@ if HOSTOS.startswith("Darwin"):
     DEBUG = True
 
 if DEBUG:
-    MAX_DURATION = 8#15
-    MAX_PRODUCER_NUM = 4#7
+    MAX_DURATION = 3#15
+    MAX_PRODUCER_NUM = 3#7
     CS_LIST =["Zero"]
     OUT += "-debug"
-    CONSUMER_CLASS_LIST = ["ConsumerCbr"]
+    CONSUMER_CLASS_LIST = ["ConsumerZipfMandelbrot"]
+    #IS_REFRESH = True
     
 else :
     MAX_DURATION = 10
     MAX_PRODUCER_NUM = 7
-    CS_LIST = ["Zero", 1,3,5, 10, 0]
     CS_LIST = ["Zero", 1,3,5, 10, 0]
     CONSUMER_CLASS_LIST = ["ConsumerCbr", "ConsumerZipfMandelbrot"]
 
@@ -153,6 +153,7 @@ class Case(Manager, threading.Thread):
                     if row.find(shema.keyword)>=0:
                         self.counts[i] += 1
     UPDATE_FLAG = "- Change Status from" #green-yellow-red.cc UpdateStatus, ndn-fib-entry.cc Row90,
+                # "- Change Status from"
     INTEREST_FLAG = "> Interest for"  #ndn-consumer.cc Row210
     DATA_FLAG = "+ Respodning with ContentObject" #xiaoke.cc SinkIst, a TracedCallback
     DATA_ARRIVE = "< DATA for" #ndn-consumer.cc Row256
@@ -163,10 +164,10 @@ class Case(Manager, threading.Thread):
             
             
     FIB_UPDATE = DataSchema(label="Update", keyword=UPDATE_FLAG, desc="FIB entry changing status", match="left")
-    IST_NEW = DataSchema(label="Ist", keyword="> Interest for", match="left", desc="Interest Generating")
+    IST_NEW = DataSchema(label="Ist", keyword="> Interest for", match="left", desc="Interest Sent excluding Forwarding")
     DATA_NEW = DataSchema(label="DataNew", keyword="+ Respodning with ContentObject", match="left", desc="producer gernates new content")
-    DATA_GOTTEN = DataSchema(label="DataGotten", keyword="< DATA for", match="left", desc="consumer got its data")
-    NACK_GOTTEN = DataSchema(label="NackGotten", keyword="< NACK for", match="left", desc="consumer got nack")
+    DATA_GOTTEN = DataSchema(label="DataGotten", keyword="< DATA for", match="left", desc="Data Received by Consumer")
+    NACK_GOTTEN = DataSchema(label="NackGotten", keyword="< NACK for", match="left", desc="Nakc got by Consumer")
     
     SCHEMAS=[FIB_UPDATE, IST_NEW, DATA_NEW, DATA_GOTTEN, NACK_GOTTEN]
     
@@ -186,6 +187,8 @@ class Case(Manager, threading.Thread):
         #--duration=1">output2-debug/Dot/DOT-ConsumerCbr-csZero-producer1-nackfalse-duration1.dat 2>&1
         self.cmd += " --trace="
         self.cmd += self.trace
+        self.cmd += " --csSize="
+        self.cmd += str(kwargs["csSize"]) if "csSize" in kwargs else "Zero"
         self.cmd += " --nack="
         self.cmd +=  kwargs["nack"] if "nack" in kwargs else "true"
         self.cmd += " --producerNum="
@@ -196,6 +199,7 @@ class Case(Manager, threading.Thread):
         self.cmd += str(kwargs["seed"]) if "seed" in kwargs else "3"
         self.cmd += " --duration="
         self.cmd += str(kwargs["duration"]) if "duration" in kwargs else "1"
+
         
         self.cmd +=  "\"";
         self.cmd += ">"+self.output+" 2>&1"  
@@ -231,8 +235,7 @@ class Case(Manager, threading.Thread):
                 return
             self.stats()
             self.write()
-        self.log.info("< " + self.id+" ends")    
-        self.log.debug("self.data = "+str(self.data))
+        self.log.info("< " + self.id+" ends. Data:"+str(self.data))    
     
     def stats(self):
         """ stats on the output of the runed case
@@ -331,7 +334,7 @@ class Figure(Manager):
         self.style = kwargs["style"] if "style" in kwargs else "o-"
         
         self.title = kwargs["title"] if "title" in kwargs else "Title"
-        self.xlabel = kwargs["xlabel"] if "xlabel" in kwargs else "X"
+        self.xlabel = kwargs["xlabel"] if "xlabel" in kwargs else "Duration(Second)"
         self.ylabel = kwargs["ylabel"] if "ylabel" in kwargs else "#"
         
     def draw(self):
@@ -397,21 +400,28 @@ class God(Manager):
         """
         Manager.__init__(self, id="GOD")
         self.t0 = time.time()
-        self.paperid = None
+        self.paperid = "paper-cdn-over-ndn"
         self.t1 = None
         
         dic = {}
         cases = {}
-        for nack in ["true", "false"]:
-            dic["nack"] = nack
-            for duration in [1, 2, 3]:
-                dic["duration"] = duration
-                id = "Case" + self.parseId(dic)
+        #CS_LIST, CONSUMER_CLASS_LIST
+        for csSize in CS_LIST:
+            dic["csSize"] = csSize
+            for consumerClass in CONSUMER_CLASS_LIST:
+                dic["consumerClass"] = consumerClass
+                for producerNum in range(1, MAX_PRODUCER_NUM+1):          
+                    dic["producerNum"] = producerNum
+                    for nack in ["true", "false"]:
+                        dic["nack"] = nack
+                        for duration in range(1, MAX_DURATION+1):
+                            dic["duration"] = duration
+                            id = "Case" + self.parseId(dic)
+                            
+                            case = Case(id=id, **dic)
+                            case.start()
+                            cases[id] = case
                 
-                case = Case(id=id, **dic)
-                case.start()
-                cases[id] = case
-        
         for k, case in cases.items():
             if case.isAlive():
                 case.join()
@@ -422,56 +432,97 @@ class God(Manager):
         self.cases = cases
     
     
-    def say(self):
+    def create(self):
+        """ God says a lot to create the univesity
+        """
+        self.monday()
+        
+        
+    def monday(self):
+        """ God work on Monday
+        """
+        figs = []
+        Yindexes = [1, 4, "4.1"]
+        Titles = ["Interest #", "Nack (Gotten by Consumer) #", "Bad Network Environment"]
+        YLabels = ["Interest #", "Nack (Gotten by Consumer) #", "Nack/Interest"]
+        for i in range(len(Yindexes)):
+            yindex = Yindexes[i]
+            title = Titles[i]
+            ylabel = "#-" if i>=len(YLabels) else YLabels[i]
+
+            fig = self.say(yindex, title=title, ylabel=ylabel)
+            figs.append(fig)
+        
+        return figs
+#        paperid = "paper-cdn"
+#        paper = Paper(id=paperid, figs=figs)
+#        self.paperid = paperid
+#        
+#        self.log.info("Paper Run end!")
+
+    
+    
+    def say(self, yindex, **kwargs):
         """ God creates the universe, "God says ..."
         
         """
-        figs = []
         
-        for yindex in [1, 4, "4.1"]:
-            dic = {}
-            figid ="Fig-"
-            
+        #for yindex in [1, 4, "4.1"]:
+        
+        figid ="Fig-"
+        
+        if "id" in kwargs:
+            id = kwargs["id"]
+        else:
             if type(yindex) == int:
-                figid += Case.DATA_LABELS[yindex]
+                id = Case.DATA_LABELS[yindex]
             elif type(yindex) == str:
                 tmps = yindex.split(".")
                 assert len(tmps) == 2, "tmps="+str(tmps)
                 t1 = int(tmps[0])
                 t2 = int(tmps[1])
-                figid += Case.DATA_LABELS[t1] + "=" + Case.DATA_LABELS[t2]
-                
-            lines = []
-            
-            for nack in ["true", "false"]:
-                dic["nack"] = nack
-                lineid = "Line"+self.parseId(dic)
-                
-                dots = []
-                MAX_DURATION = 3
-                for duration in range(1, MAX_DURATION+1):
-                    dic["duration"] = duration
-                    atts = self.parseId(dic)
-                    id = "Case" + atts
-                    case = self.cases[id]
+                id = Case.DATA_LABELS[t1] + "=" + Case.DATA_LABELS[t2]     
+        figid += id
+        lines = []
+        
+        dic = {}
+        linelabel = ""
+        for csSize in CS_LIST:
+            dic["csSize"] = csSize
+            for consumerClass in CONSUMER_CLASS_LIST:
+                dic["consumerClass"] = consumerClass
+                for producerNum in range(1, MAX_PRODUCER_NUM+1):
+                    dic["producerNum"] = producerNum
                     
-                    dot = Dot(id="Dot"+atts, case=case, x=duration, yindex=yindex)
-                    dots.append(dot)
-                if nack == "true":
-                    linelabel = "NDN"
-                else:
-                    linelabel = "IP"
-                line = Line(id=lineid, dots=dots, label=linelabel)
-                lines.append(line)
-            fig = Figure(id=figid, lines=lines)
-            fig.draw()   
-            figs.append(fig)
+                    for nack in ["true", "false"]:
+                        dic["nack"] = nack
+                        if nack == "true":
+                            linelabel = "NDN"
+                        else:
+                            linelabel = "IP"
+                        linelabel += ", producerNum="+str(producerNum)
+                        
+                        lineid = "Line"+self.parseId(dic)
+
+                        dots = []
+                        MAX_DURATION = 3
+                        for duration in range(1, MAX_DURATION+1):
+                            dic["duration"] = duration
+                            atts = self.parseId(dic)
+                            id = "Case" + atts
+                            case = self.cases[id]
+                            
+                            dot = Dot(id="Dot"+atts, case=case, x=duration, yindex=yindex, producerNum=producerNum)
+                            dots.append(dot)
+                        line = Line(id=lineid, dots=dots, label=linelabel)
+                        lines.append(line)
+                        
+        title = kwargs["title"] if "title" in kwargs else "title3"
+        ylabel = kwargs["ylabel"] if "ylabel" in kwargs else "ylabel3"
+        fig = Figure(id=figid, lines=lines, title=title, ylabel=ylabel)
+        fig.draw()   
+        return fig
         
-        paperid = "paper-cdn"
-        paper = Paper(id=paperid, figs=figs)
-        self.paperid = paperid
-        
-        self.log.info("Paper Run end!")
 
     def rest(self):
         """ God notifies people it create everything and has a rest
@@ -519,7 +570,7 @@ class God(Manager):
     
 if __name__=="__main__":
     god = God()
-    god.say()
+    god.create()
     god.rest()
 
  
