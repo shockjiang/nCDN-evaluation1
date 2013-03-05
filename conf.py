@@ -21,7 +21,7 @@ import threading
 
 
 IS_MT = True #Multi Threads Run
-IS_REFRESH = False
+IS_REFRESH = True
 
 
 OUT = "output"
@@ -37,12 +37,12 @@ if DEBUG:
     CS_LIST =["Zero"]
     OUT += "-debug"
     CONSUMER_CLASS_LIST = ["ConsumerZipfMandelbrot"]
-    #IS_REFRESH = True
+    IS_REFRESH = True
     
 else :
     MAX_DURATION = 10
     MAX_PRODUCER_NUM = 7
-    CS_LIST = ["Zero", 1,3,5, 10, 0]
+    CS_LIST = ["Zero"]
     CONSUMER_CLASS_LIST = ["ConsumerCbr", "ConsumerZipfMandelbrot"]
 
 
@@ -421,12 +421,16 @@ class God(Manager):
                             case = Case(id=id, **dic)
                             case.start()
                             cases[id] = case
-                
+        counter = len(cases)
+        self.log.info("begin to wait all threads. Thread number: "+str(counter))
+        
+        
         for k, case in cases.items():
             if case.isAlive():
                 case.join()
-                
-            #self.log.info(case.id+" ends")
+            counter -= 1
+            self.log.info(case.id+" ends. Remained: "+str(counter))
+
 
         self.log.info("Cases Run end!")
         self.cases = cases
