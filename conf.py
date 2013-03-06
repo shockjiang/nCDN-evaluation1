@@ -31,6 +31,8 @@ DEBUG = False
 if HOSTOS.startswith("Darwin"):
     DEBUG = True
 
+#DEBUG = False
+
 if DEBUG:
     MAX_DURATION = 3#15
     MAX_PRODUCER_NUM = 3#7
@@ -44,9 +46,12 @@ else :
     MAX_PRODUCER_NUM = 4
     CS_LIST = ["Zero"]
     CONSUMER_CLASS_LIST = ["ConsumerCbr", "ConsumerZipfMandelbrot"]
-
+    #nack: true& false
 
 LOG_LEVEL = logging.DEBUG
+
+
+AliveCaseCounter = 0
 
 class ClassFilter(logging.Filter):
     """filter the log information by class name
@@ -235,7 +240,11 @@ class Case(Manager, threading.Thread):
                 return
             self.stats()
             self.write()
-        self.log.info("< " + self.id+" ends. Data:"+str(self.data))    
+        
+        global AliveCaseCounter
+        AliveCaseCounter -= 1
+
+        self.log.info("< " + self.id+" ends. Data:"+str(self.data)+". Remained: "+str(AliveCaseCounter))    
     
     def stats(self):
         """ stats on the output of the runed case
@@ -419,19 +428,19 @@ class God(Manager):
                             id = "Case" + self.parseId(dic)
                             
                             case = Case(id=id, **dic)
-                            case.start()
                             cases[id] = case
-        counter = len(cases)
-        self.log.info("begin to wait all threads. Thread number: "+str(counter))
         
+        for k, case in cases.items():
+            case.start()
         
+        global AliveCaseCounter
+        AliveCaseCounter = len(cases)
+            
+        self.log.info("begin to wait all threads. Thread number: "+str(AliveCaseCounter))
         for k, case in cases.items():
             if case.isAlive():
                 case.join()
-            counter -= 1
-            self.log.info(case.id+" ends. Remained: "+str(counter))
-
-
+        
         self.log.info("Cases Run end!")
         self.cases = cases
     
