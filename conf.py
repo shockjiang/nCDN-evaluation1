@@ -21,8 +21,7 @@ import threading
 
 
 IS_MT = True #Multi Threads Run
-IS_REFRESH = True
-
+IS_REFRESH = False
 
 OUT = "output"
 DEBUG = False
@@ -38,12 +37,13 @@ if DEBUG:
     MAX_PRODUCER_NUM = 3#7
     CS_LIST =["Zero"]
     OUT += "-debug"
-    CONSUMER_CLASS_LIST = ["ConsumerZipfMandelbrot"]
+    #CONSUMER_CLASS_LIST = ["ConsumerZipfMandelbrot"]
+    CONSUMER_CLASS_LIST = ["ConsumerCbr"]
     IS_REFRESH = True
     
 else :
     MAX_DURATION = 10
-    MAX_PRODUCER_NUM = 4
+    MAX_PRODUCER_NUM = 6
     CS_LIST = ["Zero"]
     CONSUMER_CLASS_LIST = ["ConsumerCbr", "ConsumerZipfMandelbrot"]
     #nack: true& false
@@ -172,7 +172,7 @@ class Case(Manager, threading.Thread):
     IST_NEW = DataSchema(label="Ist", keyword="> Interest for", match="left", desc="Interest Sent excluding Forwarding")
     DATA_NEW = DataSchema(label="DataNew", keyword="+ Respodning with ContentObject", match="left", desc="producer gernates new content")
     DATA_GOTTEN = DataSchema(label="DataGotten", keyword="< DATA for", match="left", desc="Data Received by Consumer")
-    NACK_GOTTEN = DataSchema(label="NackGotten", keyword="< NACK for", match="left", desc="Nakc got by Consumer")
+    NACK_GOTTEN = DataSchema(label="NackGotten", keyword="< NACK for", match="left", desc="Nack Received by Consumer")
     
     SCHEMAS=[FIB_UPDATE, IST_NEW, DATA_NEW, DATA_GOTTEN, NACK_GOTTEN]
     
@@ -430,11 +430,13 @@ class God(Manager):
                             case = Case(id=id, **dic)
                             cases[id] = case
         
+        global AliveCaseCounter
+        AliveCaseCounter = len(cases)
+        
         for k, case in cases.items():
             case.start()
         
-        global AliveCaseCounter
-        AliveCaseCounter = len(cases)
+
             
         self.log.info("begin to wait all threads. Thread number: "+str(AliveCaseCounter))
         for k, case in cases.items():
@@ -455,9 +457,9 @@ class God(Manager):
         """ God work on Monday
         """
         figs = []
-        Yindexes = [1, 4, "4.1"]
+        Yindexes = [1, 4, "3.1"]
         Titles = ["Interest #", "Nack (Gotten by Consumer) #", "Bad Network Environment"]
-        YLabels = ["Interest #", "Nack (Gotten by Consumer) #", "Nack/Interest"]
+        YLabels = ["Interest #", "Nack (Gotten by Consumer) #", "Data/Interest"]
         for i in range(len(Yindexes)):
             yindex = Yindexes[i]
             title = Titles[i]
@@ -502,13 +504,16 @@ class God(Manager):
         linelabel = ""
         for csSize in CS_LIST:
             dic["csSize"] = csSize
-            for consumerClass in CONSUMER_CLASS_LIST:
+            for consumerClass in ["ConsumerCbr"]:#["ConsumerZipfMandelbrot"]: # CONSUMER_CLASS_LIST:
+            #for consumerClass in ["ConsumerZipfMandelbrot"]: # CONSUMER_CLASS_LIST:
                 dic["consumerClass"] = consumerClass
-                for producerNum in range(1, MAX_PRODUCER_NUM+1):
-                    dic["producerNum"] = producerNum
-                    
-                    for nack in ["true", "false"]:
-                        dic["nack"] = nack
+                for nack in ["true", "false"]:
+                    dic["nack"] = nack
+                    #for producerNum in range(2, MAX_PRODUCER_NUM+1):
+                    for producerNum in [1, 2, 3]:
+                        dic["producerNum"] = producerNum
+                                
+                        
                         if nack == "true":
                             linelabel = "NDN"
                         else:
@@ -518,7 +523,6 @@ class God(Manager):
                         lineid = "Line"+self.parseId(dic)
 
                         dots = []
-                        MAX_DURATION = 3
                         for duration in range(1, MAX_DURATION+1):
                             dic["duration"] = duration
                             atts = self.parseId(dic)
