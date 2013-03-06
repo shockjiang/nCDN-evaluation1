@@ -46,7 +46,7 @@ else :
     MAX_PRODUCER_NUM = 6
     CS_LIST = ["Zero"]
     CONSUMER_CLASS_LIST = ["ConsumerCbr", "ConsumerZipfMandelbrot"]
-    #nack: true& false
+    IS_REFRESH = True
 
 LOG_LEVEL = logging.DEBUG
 
