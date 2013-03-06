@@ -1,0 +1,2 @@
+#./waf --run "xiaoke  --trace=output/Case/Case-consumerClassConsumerCbr-csSize1-duration10-nackfalse-producerNum1.trace --csSize=1 --nack=false --producerNum=1 --consumerClass=ConsumerCbr --seed=3 --duration=10">output/Case/Case-consumerClassConsumerCbr-csSize1-duration10-nackfalse-producerNum1.output 2>&1
+0	0	0	0	0	

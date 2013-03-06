@@ -1,0 +1,2 @@
+#./waf --run "xiaoke  --trace=output/Case/Case-consumerClassConsumerCbr-csSizeZero-duration6-nacktrue-producerNum2.trace --csSize=Zero --nack=true --producerNum=2 --consumerClass=ConsumerCbr --seed=3 --duration=6">output/Case/Case-consumerClassConsumerCbr-csSizeZero-duration6-nacktrue-producerNum2.output 2>&1
+272	7367	7295	7248	43	

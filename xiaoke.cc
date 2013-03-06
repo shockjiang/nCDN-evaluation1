@@ -148,7 +148,7 @@ int main (int argc, char *argv[])
   settings<<"#seed="<<seed<<" duration="<<duration<<" producerNum="<<producerNum<<" csSize="<<csSize<<" consumerClass="<<consumerClass;
   settings<<" nack="<<nack<<" trace="<<tracefile;
 
-  Config::SetDefault ("ns3::PointToPointNetDevice::DataRate", StringValue ("10Mbps"));
+  Config::SetDefault ("ns3::PointToPointNetDevice::DataRate", StringValue ("2Mbps"));
   Config::SetDefault ("ns3::PointToPointChannel::Delay", StringValue ("10ms"));
   Config::SetDefault ("ns3::DropTailQueue::MaxPackets", StringValue("200"));
   Config::SetDefault("ns3::ndn::fw::Nacks::EnableNACKs", StringValue(nack));
