@@ -598,6 +598,7 @@ if __name__=="__main__":
             pass
         elif (arg == "test"):
             case = Case(id="test")
+            case.isRefresh = True
             global AliveCaseCounter
             AliveCaseCounter = 1
             case.start()
