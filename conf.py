@@ -33,8 +33,8 @@ if HOSTOS.startswith("Darwin"):
 #DEBUG = False
 
 if DEBUG:
-    MAX_DURATION = 3#15
-    MAX_PRODUCER_NUM = 3#7
+    MAX_DURATION = 2#15
+    MAX_PRODUCER_NUM = 2#7
     CS_LIST =["Zero"]
     OUT += "-debug"
     #CONSUMER_CLASS_LIST = ["ConsumerZipfMandelbrot"]
@@ -429,22 +429,21 @@ class God(Manager):
                             
                             case = Case(id=id, **dic)
                             cases[id] = case
+        self.cases = cases
         
+    def setup(self):
         global AliveCaseCounter
-        AliveCaseCounter = len(cases)
+        AliveCaseCounter = len(self.cases)
         
-        for k, case in cases.items():
+        for k, case in self.cases.items():
             case.start()
-        
-
-            
+                
         self.log.info("begin to wait all threads. Thread number: "+str(AliveCaseCounter))
-        for k, case in cases.items():
+        for k, case in self.cases.items():
             if case.isAlive():
                 case.join()
-        
+
         self.log.info("Cases Run end!")
-        self.cases = cases
     
     
     def create(self):
@@ -586,8 +585,25 @@ class God(Manager):
     
     
 if __name__=="__main__":
-    god = God()
-    god.create()
-    god.rest()
+    av = sys.argv
+    if len(av) == 1:
+        god = God()
+        god.setup()
+        god.create()
+        god.rest()
+
+    for i in range(1, len(av)):
+        arg = av[i]
+        if (arg == "clear"):
+            pass
+        elif (arg == "test"):
+            case = Case(id="test")
+            global AliveCaseCounter
+            AliveCaseCounter = 1
+            case.start()
+            if case.isAlive():
+                case.join()
+            print "test finish"
+            
 
  
