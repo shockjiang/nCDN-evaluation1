@@ -599,8 +599,8 @@ if __name__=="__main__":
         elif (arg == "test"):
             case = Case(id="test")
             case.isRefresh = True
-            global AliveCaseCounter
-            AliveCaseCounter = 1
+            
+            AliveCaseCounter += 1
             case.start()
             if case.isAlive():
                 case.join()
