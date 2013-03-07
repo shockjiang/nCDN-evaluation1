@@ -1,2 +1,2 @@
-#./waf --run "xiaoke  --trace=output/Case/Case-consumerClassConsumerCbr-csSizeZero-duration1-nacktrue-producerNum5.trace --csSize=Zero --nack=true --producerNum=5 --consumerClass=ConsumerCbr --seed=3 --duration=1">output/Case/Case-consumerClassConsumerCbr-csSizeZero-duration1-nacktrue-producerNum5.output 2>&1
-46	1180	1147	1112	0	
+#./waf --run "xiaoke  --trace=shock/output/Case/Case-consumerClassConsumerCbr-csSizeZero-duration1-nacktrue-producerNum5.trace --csSize=Zero --nack=true --producerNum=5 --consumerClass=ConsumerCbr --seed=3 --duration=1">output/Case/Case-consumerClassConsumerCbr-csSizeZero-duration1-nacktrue-producerNum5.output 2>&1
+48	1255	1233	1183	0	

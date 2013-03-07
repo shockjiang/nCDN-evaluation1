@@ -1,2 +1,2 @@
-#./waf --run "xiaoke  --trace=output/Case/Case-consumerClassConsumerZipfMandelbrot-csSizeZero-duration1-nackfalse-producerNum6.trace --csSize=Zero --nack=false --producerNum=6 --consumerClass=ConsumerZipfMandelbrot --seed=3 --duration=1">output/Case/Case-consumerClassConsumerZipfMandelbrot-csSizeZero-duration1-nackfalse-producerNum6.output 2>&1
-45	1197	954	1144	0	
+#./waf --run "xiaoke  --trace=shock/output/Case/Case-consumerClassConsumerZipfMandelbrot-csSizeZero-duration1-nackfalse-producerNum6.trace --csSize=Zero --nack=false --producerNum=6 --consumerClass=ConsumerZipfMandelbrot --seed=3 --duration=1">output/Case/Case-consumerClassConsumerZipfMandelbrot-csSizeZero-duration1-nackfalse-producerNum6.output 2>&1
+46	1216	959	1157	0	

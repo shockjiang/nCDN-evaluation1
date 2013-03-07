@@ -14,8 +14,8 @@ import smtplib
 
 
 import inspect
-from script.updateCounter import getUpdateNum
-from script.cmp import cmp
+#from script.updateCounter import getUpdateNum
+#from script.cmp import cmp
 import logging
 import threading
 
@@ -181,7 +181,7 @@ class Case(Manager, threading.Thread):
         Manager.__init__(self, id)
         
         self.cmd = "./waf --run \"xiaoke "
-        self.trace = os.path.join(OUT, self.__class__.__name__, self.id+".trace") #trace out put
+        self.trace = os.path.join("shock", OUT, self.__class__.__name__, self.id+".trace") #trace out put
         self.output = os.path.join(OUT, self.__class__.__name__, self.id+".output") #case run console output
         
         #./waf --run "xiaoke --trace=./shock/output2-debug/Dot/DOT-ConsumerCbr-csZero-producer1-nackfalse-duration1.trace 
@@ -357,7 +357,7 @@ class Figure(Manager):
         
         for line in self.lines:
             if line.label == None:
-                plt.plot(line.xs, line.ys, self.style)
+                plt.plot(line.xs, line.ys, self.style, label="ab")
             else:
                 plt.plot(line.xs, line.ys, self.style, label=line.label)
         
