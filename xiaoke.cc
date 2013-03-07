@@ -304,12 +304,15 @@ int main (int argc, char *argv[])
   NS_LOG_INFO(settings.str());
 
 
-  boost::tuple< boost::shared_ptr<std::ostream>, std::list<Ptr<ndn::AppDelayTracer> > >
-    tracers = ndn::AppDelayTracer::InstallAll (tracefile);
 
 
   NS_LOG_INFO ("Run Simulation.");
   Simulator::Stop(Seconds(duration));
+
+  boost::tuple< boost::shared_ptr<std::ostream>, std::list<Ptr<ndn::AppDelayTracer> > >
+  tracers = ndn::AppDelayTracer::InstallAll (tracefile);
+
+
   Simulator::Run ();
   Simulator::Destroy ();
 
