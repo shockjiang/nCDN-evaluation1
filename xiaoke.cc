@@ -151,7 +151,7 @@ int main (int argc, char *argv[])
 
   Config::SetDefault ("ns3::PointToPointNetDevice::DataRate", StringValue ("2Mbps"));
   Config::SetDefault ("ns3::PointToPointChannel::Delay", StringValue ("10ms"));
-  Config::SetDefault ("ns3::DropTailQueue::MaxPackets", StringValue("200"));
+  Config::SetDefault ("ns3::DropTailQueue::MaxPackets", StringValue("2"));
   Config::SetDefault("ns3::ndn::fw::Nacks::EnableNACKs", StringValue(nack));
 
   Ptr<TopologyReader> inFile = 0;

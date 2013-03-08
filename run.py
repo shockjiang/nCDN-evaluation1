@@ -15,7 +15,7 @@ import smtplib
 
 import inspect
 #from script.updateCounter import getUpdateNum
-#from script.cmp import cmp
+from script.cmp import cmp
 import logging
 import threading
 
@@ -181,7 +181,7 @@ class Case(Manager, threading.Thread):
         Manager.__init__(self, id)
         
         self.cmd = "./waf --run \"xiaoke "
-        self.trace = os.path.join("shock", OUT, self.__class__.__name__, self.id+".trace") #trace out put
+        self.trace = os.path.join(OUT, self.__class__.__name__, self.id+".trace") #trace out put
         self.output = os.path.join(OUT, self.__class__.__name__, self.id+".output") #case run console output
         
         #./waf --run "xiaoke --trace=./shock/output2-debug/Dot/DOT-ConsumerCbr-csZero-producer1-nackfalse-duration1.trace 
@@ -191,7 +191,7 @@ class Case(Manager, threading.Thread):
         #--seed=3 
         #--duration=1">output2-debug/Dot/DOT-ConsumerCbr-csZero-producer1-nackfalse-duration1.dat 2>&1
         self.cmd += " --trace="
-        self.cmd += self.trace
+        self.cmd += os.path.join("shock", self.trace)
         self.cmd += " --csSize="
         self.cmd += str(kwargs["csSize"]) if "csSize" in kwargs else "Zero"
         self.cmd += " --nack="
@@ -253,6 +253,47 @@ class Case(Manager, threading.Thread):
         
         for row in f.readlines():
             self.counter.count(row)
+        
+        
+        count = 0
+        lastdelaysum = 0
+        fulldelaysum = 0
+        retxsum = 0
+        hopsum = 0
+        
+        f = open(self.trace)
+        for row in f.readlines():
+            if row.startswith("Time"):
+                continue
+            parts = row.split()
+            assert len(parts) == 9, "row="+str(j)+" len(parts)="+str(len(parts))+" (9 is OK)"
+            
+            node = parts[1]
+            seq = int(parts[3])
+            kind = parts[4]  #type
+            value = float(parts[6])
+            retx = int(parts[7])
+            hop = int(parts[8])
+            
+            if hop == -1:
+                continue
+            count += 1
+            if kind == "LastDelay":
+                lastdelaysum += value
+                hopsum += hop
+            elif kind == "FullDelay":
+                fulldelaysum += value
+                retxsum += retx
+            else:
+                pass
+            
+            
+        count = count/2.0    
+        #tracerst = cmp(self.trace)
+        self.data = self.data + [count, lastdelaysum/count, fulldelaysum/count, hopsum/count, retxsum/count]
+        #rd, avglast, avgfull, avghop, avgretx = cmp(self.trace)
+        
+        
         
     def write(self):
         """ write the statistical data to file
@@ -463,7 +504,7 @@ class God(Manager):
     def create(self):
         """ God says a lot to create the univesity
         """
-        #self.monday()
+        self.monday()
         self.tuesday()
         
     def monday(self):
@@ -478,7 +519,7 @@ class God(Manager):
             title = Titles[i]
             ylabel = "#-" if i>=len(YLabels) else YLabels[i]
 
-            fig = self.say(yindex, id="network-state", title=title, ylabel=ylabel, ymin=0.75, ymax=0.8, nacks=["false"])
+            fig = self.say(yindex, id="network-state", title=title, ylabel=ylabel, ymin=0, ymax=1, nacks=["false"])
             figs.append(fig)
         
         return figs
@@ -630,13 +671,26 @@ if __name__=="__main__":
         if (arg == "clear"):
             pass
         elif (arg == "test"):
-            case = Case(id="test")
-            case.isRefresh = True
+            dic = {}
+            duration = 1
+            producerNum = 2
+            dic["duration"] = duration
+            dic["producerNum"] = producerNum
             
-            AliveCaseCounter += 1
-            case.start()
-            if case.isAlive():
-                case.join()
+            case1 = Case(id="test-nacktrue", nack="true", **dic)
+            case1.isRefresh = False
+            
+            
+            case2 = Case(id="test-nackfalse", nack="false", **dic)
+            case2.isRefresh = False
+            
+            AliveCaseCounter += 2
+            case1.start()
+            case2.start()
+            for case in [case1, case2]: 
+                if case.isAlive():
+                    case.join()
+                    
             print "test finish"
             
 
