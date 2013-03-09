@@ -21,7 +21,7 @@ import threading
 
 
 IS_MT = True #Multi Threads Run
-IS_REFRESH = False
+IS_REFRESH = True
 
 OUT = "output"
 DEBUG = False
