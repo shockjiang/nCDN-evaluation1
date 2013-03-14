@@ -44,6 +44,7 @@
 #include "ns3/ndn-content-object.h"
 #include "ns3/ndnSIM-module.h"
 #include "ns3/ndn-app.h"
+#include "../src/ndnSIM/apps/cdn-ip-app.h"
 //#include "ns3/ndn-producer.h"
 #include "../src/ndnSIM/apps/ndn-producer.h"
 #include "../src/ndnSIM/model/fib/ndn-fib-entry.h"
@@ -55,6 +56,9 @@
 #include "ns3/inet-topology-reader.h"
 #include <list>
 #include <ns3/ndnSIM/utils/tracers/ndn-app-delay-tracer.h>
+#include <vector>
+
+
 
 using namespace std;
 using namespace ns3;
@@ -99,6 +103,8 @@ int main (int argc, char *argv[])
 	LogComponentEnable("ndn.Consumer", LOG_LEVEL_INFO);
 	LogComponentEnable("ShockExperiment", LOG_LEVEL_INFO); //all-logic,function, info, debug, warn, error, uncond
 	LogComponentEnable("ndn.fib.Entry", LOG_LEVEL_FUNCTION);
+	LogComponentEnable("ndn.CDNIPApp", LOG_LEVEL_INFO);
+
 
 	std::string format ("Inet");
 	std::string input ("shock/input/sprint-topology.txt");
@@ -139,7 +145,11 @@ int main (int argc, char *argv[])
 
   if (tracefile == ""){
 		  if (nack == "true") {
-			  tracefile = "shock/output/Nack-enable.txt";
+			  if (consumerClass=="CDNIPApp") {
+				  tracefile = "shock/output/Nack-ip.txt";
+			  } else {
+				  tracefile = "shock/output/Nack-enable.txt";
+			  }
 		  }else  if (nack=="false"){
 			  tracefile = "shock/output/Nack-disable.txt";
 		  }
@@ -149,9 +159,9 @@ int main (int argc, char *argv[])
   settings<<" nack="<<nack<<" trace="<<tracefile;
 
 
-  Config::SetDefault ("ns3::PointToPointNetDevice::DataRate", StringValue ("2Mbps"));
-  Config::SetDefault ("ns3::PointToPointChannel::Delay", StringValue ("10ms"));
-  Config::SetDefault ("ns3::DropTailQueue::MaxPackets", StringValue("2"));
+  Config::SetDefault ("ns3::PointToPointNetDevice::DataRate", StringValue ("1Mbps"));
+  //Config::SetDefault ("ns3::PointToPointChannel::Delay", StringValue ("10ms"));
+  //Config::SetDefault ("ns3::DropTailQueue::MaxPackets", StringValue("5"));
   Config::SetDefault("ns3::ndn::fw::Nacks::EnableNACKs", StringValue(nack));
 
   Ptr<TopologyReader> inFile = 0;
@@ -192,7 +202,9 @@ int main (int argc, char *argv[])
   ndn::StackHelper ccnxHelper;
   ccnxHelper.SetForwardingStrategy ("ns3::ndn::fw::BestRoute::PerOutFaceLimits",
   									  "Limit", "ns3::ndn::Limits::Rate");
-  	  ccnxHelper.EnableLimits(true, Seconds(0.1), 1100, 50);
+  ccnxHelper.EnableLimits(true, Seconds(0.1), 1100, 50);
+
+//  ccnxHelper.SetForwardingStrategy ("ns3::ndn::fw::BestRoute");
 //  if (nack == "false") {
 //	  ccnxHelper.SetForwardingStrategy ("ns3::ndn::fw::BestRoute");
 //  } else {
@@ -223,7 +235,21 @@ int main (int argc, char *argv[])
   for (int i=0; i<producerNum; i++){
 
 	  //SeedManager::SetSeed (seed+seed*i);  // Changes seed from default of 1 to 3
-	  int pdc = rng.GetInteger(0, totnodes-1); //[0, totnodes-1]
+	  int pdc;
+	  if (i == 0) {
+		  pdc = 9;
+	  } else if (i == 1){
+		  pdc = 20;
+	  } else if (i == 2) {
+		  pdc = 30;
+	  } else if (i == 3) {
+		  pdc = 15;
+	  } else if (i == 4) {
+		  pdc = 16;
+	  } else {
+		  pdc = rng.GetInteger(0, totnodes-1); //[0, totnodes-1]
+	  }
+
 	  if (nodesFlag[pdc] >0){
 		  i--;
 		  continue;
@@ -237,48 +263,91 @@ int main (int argc, char *argv[])
 	  NS_LOG_LOGIC("add a producer node id="<<pdc);
   }//for i
 
+
+
   std::string prefix = "/prefix";
   Ptr<Node> node;
   ndn::AppHelper producerHelper("ns3::ndn::Producer");
   ndn::AppHelper consumerHelper("ns3::ndn::"+consumerClass);
+  //ndn::AppHelper consumerHelper("ns3::ndn::CDNIPApp");
   std::string aPrefix;
-
+  stringstream strStream;
 
 
   for (int i=0; i<totnodes; i++){
-	  stringstream strStream;
+      NS_LOG_DEBUG("i="<<i);
+	  strStream.str("");
 	  node = nodes.Get(i);
+	  NS_LOG_DEBUG("i="<<i<<" node="<<node);
+	  if (consumerClass != "CDNIPApp") {
+		  if (nodesFlag[i] ==0){  //consumer /prefix/producerID
+			  strStream <<i;
+			  aPrefix = prefix + "/"+strStream.str();
 
-	  if (nodesFlag[i] ==0){  //consumer /prefix/producerID
-		  int pdc = i % producerNum;
-		  pdc = producersID[pdc];
-		  pdc = i;
-		  strStream << pdc;
-		  aPrefix = prefix + "/"+strStream.str();
-		  //aPrefix = prefix;
-		  NS_LOG_LOGIC("prefix="<<aPrefix<<" attached to node "<<i);
-		  //node->TraceConnectWithoutContext("RTT", MakeCallback(&IstRtt));
-		 // node->TraceConnectWithoutContext("PathWeightsTrace", MakeCallback(&IstRtt));
+			  NS_LOG_LOGIC("prefix="<<aPrefix<<" attached to node "<<i);
+
+			  consumerHelper.SetPrefix(aPrefix);
+			  consumerHelper.SetAttribute("Frequency", StringValue("25"));  //128 = 1Mbps(/8/1024), 512Kbps(/8/1024)=64
+			  consumerHelper.SetAttribute ("Randomize", StringValue ("exponential"));
+			  consumerHelper.Install(node);
+		  } else if (nodesFlag[i] == 1){ //producer
+			  aPrefix = prefix;
+			  strStream<<i;
+			  Names::Add("producer"+strStream.str(), node);
+
+			  producerHelper.SetPrefix(aPrefix);
+			  producerHelper.SetAttribute ("PayloadSize", StringValue("1024")); //Bytes
+			  ApplicationContainer appCon = producerHelper.Install(node);
+
+			  node->GetApplication(0)->TraceConnectWithoutContext("ReceivedInterests", MakeCallback(&SinkIst));
+			  ccnxGlobalRoutingHelper.AddOrigin(prefix, node);
+		  }
+	  } else { //CDN-IP-App
+		  if (nodesFlag[i] == 0) {
+//			  int pdc = producersID[1];
+//			  strStream << pdc;
+//			  aPrefix = prefix + "/" + strStream.str();
+
+			  std::string providers;
+			  //vector<NameComponents> providers;
+
+				  for (int j=0; j<producerNum; j++) {
+					  strStream.str("");
+					  int pdc = producersID[j];
+					  strStream << pdc<<"/"<<i;
+					  aPrefix = prefix + "/" + strStream.str();
+					  if (j>0) {
+						  providers += ";";
+					  }
+					  providers += aPrefix;
+				 }
 
 
+			  NS_LOG_DEBUG("i"<<i<<" providers: "<<providers);
+		  	  consumerHelper.SetAttribute("Producers", StringValue(providers));
+			  NS_LOG_DEBUG("prefix="<<aPrefix<<" attached to node "<<i);
+			  consumerHelper.SetPrefix(aPrefix);
+			  NS_LOG_DEBUG("prefix2="<<aPrefix<<" attached to node "<<i);
+			  consumerHelper.SetAttribute("Frequency", StringValue("25"));  //128 = 1Mbps(/8/1024), 512Kbps(/8/1024)=64
+			  NS_LOG_DEBUG("prefix3="<<aPrefix<<" attached to node "<<i);
+			  consumerHelper.SetAttribute ("Randomize", StringValue ("exponential"));
+			  NS_LOG_DEBUG("prefix4="<<aPrefix<<" attached to node "<<i);
+			  consumerHelper.Install(node);
+              NS_LOG_DEBUG("i="<<i<<" ends");
+		  } else if (nodesFlag[i] == 1){ //producer
+			  strStream <<i;
+			  aPrefix = prefix + "/" + strStream.str();
+			  Names::Add("producer"+strStream.str(), node);
 
-		  consumerHelper.SetPrefix(aPrefix);
-		  consumerHelper.SetAttribute("Frequency", StringValue("25"));  //128 = 1Mbps(/8/1024), 512Kbps(/8/1024)=64
-		  consumerHelper.SetAttribute ("Randomize", StringValue ("exponential"));
-		  consumerHelper.Install(node);
-	  } else if (nodesFlag[i] == 1){ //producer
-		  strStream <<i;
-		  aPrefix = prefix + "/"+strStream.str();
-		  aPrefix = prefix;
-		  Names::Add("producer"+strStream.str(), node);
+			  producerHelper.SetPrefix(aPrefix);
+			  producerHelper.SetAttribute ("PayloadSize", StringValue("1024")); //Bytes
+			  ApplicationContainer appCon = producerHelper.Install(node);
 
-		  producerHelper.SetPrefix(aPrefix);
-		  producerHelper.SetAttribute ("PayloadSize", StringValue("1024")); //Bytes
-		  ApplicationContainer appCon = producerHelper.Install(node);
+			  //appCon.Get(0)
+			  node->GetApplication(0)->TraceConnectWithoutContext("ReceivedInterests", MakeCallback(&SinkIst));
 
-		  //appCon.Get(0)
-		  node->GetApplication(0)->TraceConnectWithoutContext("ReceivedInterests", MakeCallback(&SinkIst));
-		  ccnxGlobalRoutingHelper.AddOrigin(prefix, node);
+			  ccnxGlobalRoutingHelper.AddOrigin(aPrefix, node);
+		  }
 	  }
   }
 

@@ -1,3 +1,4 @@
+#! /usr/bin/python
 import sys
 import matplotlib
 matplotlib.use("pdf")
@@ -21,7 +22,7 @@ import threading
 
 
 IS_MT = True #Multi Threads Run
-IS_REFRESH = True
+IS_REFRESH = False
 
 OUT = "output"
 DEBUG = False
@@ -30,7 +31,7 @@ DEBUG = False
 if HOSTOS.startswith("Darwin"):
     DEBUG = True
 
-DEBUG = False
+#DEBUG = False
 
 if DEBUG:
     MAX_DURATION = 2#15
@@ -38,15 +39,14 @@ if DEBUG:
     CS_LIST =["Zero"]
     OUT += "-debug"
     #CONSUMER_CLASS_LIST = ["ConsumerZipfMandelbrot"]
-    CONSUMER_CLASS_LIST = ["ConsumerCbr"]
+    CONSUMER_CLASS_LIST = ["ConsumerCbr", "CDNIPApp"]
     IS_REFRESH = True
     
 else :
     MAX_DURATION = 10
     MAX_PRODUCER_NUM = 6
     CS_LIST = ["Zero"]
-    CONSUMER_CLASS_LIST = ["ConsumerCbr", "ConsumerZipfMandelbrot"]
-    IS_REFRESH = False
+    CONSUMER_CLASS_LIST = ["ConsumerCbr", "CDNIPApp"]
 
 LOG_LEVEL = logging.DEBUG
 
@@ -159,6 +159,7 @@ class Case(Manager, threading.Thread):
                         self.counts[i] += 1
     UPDATE_FLAG = "- Change Status from" #green-yellow-red.cc UpdateStatus, ndn-fib-entry.cc Row90,
                 # "- Change Status from"
+    PRODUCER_FLAG = "! Change Data Producer"
     INTEREST_FLAG = "> Interest for"  #ndn-consumer.cc Row210
     DATA_FLAG = "+ Respodning with ContentObject" #xiaoke.cc SinkIst, a TracedCallback
     DATA_ARRIVE = "< DATA for" #ndn-consumer.cc Row256
@@ -169,12 +170,13 @@ class Case(Manager, threading.Thread):
             
             
     FIB_UPDATE = DataSchema(label="Update", keyword=UPDATE_FLAG, desc="FIB entry changing status", match="left")
+    PRODUCER_UPDATE = DataSchema(label="Producer Change", keyword=PRODUCER_FLAG, desc="consumer change its producer", match="left")
     IST_NEW = DataSchema(label="Ist", keyword="> Interest for", match="left", desc="Interest Sent excluding Forwarding")
     DATA_NEW = DataSchema(label="DataNew", keyword="+ Respodning with ContentObject", match="left", desc="producer gernates new content")
     DATA_GOTTEN = DataSchema(label="DataGotten", keyword="< DATA for", match="left", desc="Data Received by Consumer")
     NACK_GOTTEN = DataSchema(label="NackGotten", keyword="< NACK for", match="left", desc="Nack Received by Consumer")
     
-    SCHEMAS=[FIB_UPDATE, IST_NEW, DATA_NEW, DATA_GOTTEN, NACK_GOTTEN]
+    SCHEMAS=[FIB_UPDATE, PRODUCER_UPDATE, IST_NEW, DATA_NEW, DATA_GOTTEN, NACK_GOTTEN]
     
     def __init__(self, id, **kwargs):
         threading.Thread.__init__(self)
@@ -243,8 +245,9 @@ class Case(Manager, threading.Thread):
         
         global AliveCaseCounter
         AliveCaseCounter -= 1
-
-        self.log.info("< " + self.id+" ends. Data:"+str(self.data)+". Remained: "+str(AliveCaseCounter))    
+        data_labels = ["FIB!", "PDC!","Ist", "DataGen", "DataRec", "NackRec", "Row", "LastDL", "FullDL", "Hop", "reTX"]
+        self.log.info("< " + self.id+" ends. Data:"+str({data_labels[i]:round(self.data[i], 3) for i in range(len(self.data))})+". Remained: "+str(AliveCaseCounter))
+        
     
     def stats(self):
         """ stats on the output of the runed case
@@ -288,8 +291,13 @@ class Case(Manager, threading.Thread):
                 pass
             
             
-        count = count/2.0    
+        count = count/2.0
+        if count == 0:
+            count = 1
+            self.log.warn("count == 0")    
         #tracerst = cmp(self.trace)
+        
+                            #index 5        6                    7                8                9
         self.data = self.data + [count, lastdelaysum/count, fulldelaysum/count, hopsum/count, retxsum/count]
         #rd, avglast, avgfull, avghop, avgretx = cmp(self.trace)
         
@@ -383,7 +391,7 @@ class Figure(Manager):
         self.lines = lines
         self.style = kwargs["style"] if "style" in kwargs else "o-"
         
-        self.title = kwargs["title"] if "title" in kwargs else "Title"
+        self.title = kwargs["title"] if "title" in kwargs else None
         self.xlabel = kwargs["xlabel"] if "xlabel" in kwargs else "Duration(Second)"
         
         self.ylabel = kwargs["ylabel"] if "ylabel" in kwargs else None
@@ -398,7 +406,7 @@ class Figure(Manager):
         
         for line in self.lines:
             if line.label == None:
-                plt.plot(line.xs, line.ys, self.style, label="ab")
+                plt.plot(line.xs, line.ys, self.style)
             else:
                 plt.plot(line.xs, line.ys, self.style, label=line.label)
         
@@ -406,7 +414,9 @@ class Figure(Manager):
         plt.grid(True)
         plt.xlabel(self.xlabel);
         plt.ylabel(self.ylabel);
-        plt.title(self.title)
+        if self.title != None:
+            plt.title(self.title)
+            
         if self.ymin != None:
             plt.ylim(ymin=self.ymin)
         if self.ymax != None:
@@ -506,6 +516,7 @@ class God(Manager):
         """
         self.monday()
         self.tuesday()
+        self.wenesday()
         
     def monday(self):
         """ God work on Monday
@@ -537,6 +548,13 @@ class God(Manager):
         fig = self.say(yindex=yindex, id=id, ylabel=ylabel, nacks=nacks)
     
     
+    def wenesday(self):
+        yindex = 7
+        id = "full-delay"
+        ylabel = "Delay (ms)"
+        nacks = ["true", "false"]
+        fig = self.say(yindex=yindex, id=id, ylabel=ylabel, nacks=nacks)
+    
     
     def say(self, yindex, **kwargs):
         """ God creates the universe, "God says ..."
@@ -550,7 +568,9 @@ class God(Manager):
         if "nacks" in kwargs:
             nacks = kwargs["nacks"]
         
-            
+        producers = [2, 3]
+        if "producers" in kwargs:
+            producers = kwargs["producers"]    
             
             
         if "id" in kwargs:
@@ -582,7 +602,7 @@ class God(Manager):
                 #for nack in ["true", "false"]:
                     dic["nack"] = nack
                     #for producerNum in range(2, MAX_PRODUCER_NUM+1):
-                    for producerNum in [1]:
+                    for producerNum in producers:
                         dic["producerNum"] = producerNum
                                 
                         
@@ -591,7 +611,7 @@ class God(Manager):
                         else:
                             linelabel = "IP"
                         linelabel += ", producerNum="+str(producerNum)
-                        linelabel = None
+                        #linelabel = None
                         lineid = "Line"+self.parseId(dic)
 
                         dots = []
@@ -604,7 +624,7 @@ class God(Manager):
                             dot = Dot(id="Dot"+atts, case=case, x=duration, yindex=yindex, producerNum=producerNum)
                             dots.append(dot)
                         line = Line(id=lineid, dots=dots, label=linelabel)
-                        line = Line(id=lineid, dots=dots)
+                        #line = Line(id=lineid, dots=dots)
                         lines.append(line)
                         
         title = kwargs["title"] if "title" in kwargs else "title3"
@@ -678,20 +698,27 @@ if __name__=="__main__":
             dic["producerNum"] = producerNum
             
             case1 = Case(id="test-nacktrue", nack="true", **dic)
-            case1.isRefresh = False
+            case1.isRefresh = True
             
             
             case2 = Case(id="test-nackfalse", nack="false", **dic)
-            case2.isRefresh = False
+            case2.isRefresh = True
             
-            AliveCaseCounter += 2
+            case3 = Case(id="test-ip-nacktrue", nack="true", consumerClass="CDNIPApp", **dic)
+            case3.isRefresh = True
+            
+            case4 = Case(id="test-ip-nackfalse", nack="false", consumerClass="CDNIPApp", **dic)
+            case4.isRefresh = True
+            
+            AliveCaseCounter += 4
             case1.start()
             case2.start()
-            for case in [case1, case2]: 
+            case3.start()
+            case4.start()
+            for case in [case1, case2, case3, case4]: 
                 if case.isAlive():
                     case.join()
                     
             print "test finish"
             
 
- 
