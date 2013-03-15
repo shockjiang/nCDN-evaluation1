@@ -31,20 +31,20 @@ DEBUG = False
 if HOSTOS.startswith("Darwin"):
     DEBUG = True
 
-DEBUG = False
+#DEBUG = False
 
 if DEBUG:
     MAX_DURATION = 2#15
-    MAX_PRODUCER_NUM = 2#7
+    MAX_PRODUCER_NUM = 3#7
     CS_LIST =["Zero"]
     OUT += "-debug"
     #CONSUMER_CLASS_LIST = ["ConsumerZipfMandelbrot"]
-    CONSUMER_CLASS_LIST = ["ConsumerCbr", "CDNIPApp"]
+    CONSUMER_CLASS_LIST = ["ConsumerCbr", "ConsumerZipfMandelbrot"]
     IS_REFRESH = True
     
 else :
-    MAX_DURATION = 10
-    MAX_PRODUCER_NUM = 6
+    MAX_DURATION = 6
+    MAX_PRODUCER_NUM = 3
     CS_LIST = ["Zero"]
     CONSUMER_CLASS_LIST = ["ConsumerCbr", "CDNIPApp"]
 
@@ -219,7 +219,7 @@ class Case(Manager, threading.Thread):
         """ run the case, after running, the statstical result is held in self.data as list
         """
         self.log.info("> " +self.id+" begins")
-        if not self.isRefresh and (os.path.exists(self.output) or os.path.exists(self.out)):
+        if not self.isRefresh and ((os.path.exists(self.output) and os.path.exists(self.trace)) or os.path.exists(self.out)):
             if os.path.exists(self.out):
                 self.read()
             else:
@@ -721,4 +721,3 @@ if __name__=="__main__":
                     
             print "test finish"
             
-
