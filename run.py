@@ -31,7 +31,7 @@ DEBUG = False
 if HOSTOS.startswith("Darwin"):
     DEBUG = True
 
-#DEBUG = False
+DEBUG = False
 
 if DEBUG:
     MAX_DURATION = 2#15
@@ -516,7 +516,7 @@ class God(Manager):
         """
         self.monday()
         self.tuesday()
-        self.wenesday()
+        #self.wenesday()
         
     def monday(self):
         """ God work on Monday
