@@ -31,7 +31,7 @@ DEBUG = False
 if HOSTOS.startswith("Darwin"):
     DEBUG = True
 
-#DEBUG = False
+DEBUG = False
 
 if DEBUG:
     MAX_DURATION = 2#15
@@ -43,7 +43,7 @@ if DEBUG:
     IS_REFRESH = True
     
 else :
-    MAX_DURATION = 6
+    MAX_DURATION = 10
     MAX_PRODUCER_NUM = 3
     CS_LIST = ["Zero"]
     CONSUMER_CLASS_LIST = ["ConsumerCbr", "CDNIPApp"]
@@ -246,7 +246,7 @@ class Case(Manager, threading.Thread):
         global AliveCaseCounter
         AliveCaseCounter -= 1
         data_labels = ["FIB!", "PDC!","Ist", "DataGen", "DataRec", "NackRec", "Row", "LastDL", "FullDL", "Hop", "reTX"]
-        self.log.info("< " + self.id+" ends. Data:"+str({data_labels[i]:round(self.data[i], 3) for i in range(len(self.data))})+". Remained: "+str(AliveCaseCounter))
+        self.log.info("< " + self.id+" ends. Data:"+str({data_labels[i]+str(i):round(self.data[i], 3) for i in range(len(self.data))})+". Remained: "+str(AliveCaseCounter))
         
     
     def stats(self):
@@ -516,13 +516,13 @@ class God(Manager):
         """
         self.monday()
         self.tuesday()
-        #self.wenesday()
-        
+        self.wenesday()
+        self.thursday()
     def monday(self):
         """ God work on Monday
         """
         figs = []
-        Yindexes = ["3.1"]
+        Yindexes = ["4.2"]
         Titles = ["Network State"]
         YLabels = ["Data/Interest"]
         for i in range(len(Yindexes)):
@@ -549,13 +549,24 @@ class God(Manager):
     
     
     def wenesday(self):
-        yindex = 7
+        yindex = 8
         id = "full-delay"
         ylabel = "Delay (ms)"
         nacks = ["true", "false"]
         fig = self.say(yindex=yindex, id=id, ylabel=ylabel, nacks=nacks)
     
-    
+    def thursday(self):
+        yindex = 10
+        id = "reTransmit"
+        ylabel = "Avg ReTransmit#"
+        fig = self.say(yindex=yindex, id=id, ylabel=ylabel)
+        
+        yindex = 9
+        id = "avghop"
+        ylabel = "Avg Hops#"
+        fig = self.say(yindex=yindex, id=id, ylabel=ylabel)
+        
+        
     def say(self, yindex, **kwargs):
         """ God creates the universe, "God says ..."
         
@@ -568,7 +579,7 @@ class God(Manager):
         if "nacks" in kwargs:
             nacks = kwargs["nacks"]
         
-        producers = [2, 3]
+        producers = [3]
         if "producers" in kwargs:
             producers = kwargs["producers"]    
             
@@ -594,10 +605,15 @@ class God(Manager):
         linelabel = ""
         for csSize in CS_LIST:
             dic["csSize"] = csSize
-            for consumerClass in ["ConsumerCbr"]:#["ConsumerZipfMandelbrot"]: # CONSUMER_CLASS_LIST:
+            for consumerClass in CONSUMER_CLASS_LIST:#["ConsumerZipfMandelbrot"]: # CONSUMER_CLASS_LIST:
             #for consumerClass in ["ConsumerZipfMandelbrot"]: # CONSUMER_CLASS_LIST:
             #for consumerClass in CONSUMER_CLASS_LIST:
                 dic["consumerClass"] = consumerClass
+                if consumerClass == "CDNIPApp":
+                    nacks = ["false"]
+                else:
+                    nacks = ["true", "false"]
+                
                 for nack in nacks:
                 #for nack in ["true", "false"]:
                     dic["nack"] = nack
@@ -606,11 +622,15 @@ class God(Manager):
                         dic["producerNum"] = producerNum
                                 
                         
-                        if nack == "true":
-                            linelabel = "NDN"
-                        else:
+                        if consumerClass == "CDNIPApp":
                             linelabel = "IP"
-                        linelabel += ", producerNum="+str(producerNum)
+                        else:
+                            if nack == "true":
+                                linelabel = "NDN with Adaptive Routing"
+                            else:
+                                linelabel = "NDN"
+                        
+                        #linelabel += ", producerNum="+str(producerNum)
                         #linelabel = None
                         lineid = "Line"+self.parseId(dic)
 

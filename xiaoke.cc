@@ -326,7 +326,7 @@ int main (int argc, char *argv[])
 			  NS_LOG_DEBUG("i"<<i<<" providers: "<<providers);
 		  	  consumerHelper.SetAttribute("Producers", StringValue(providers));
 			  NS_LOG_DEBUG("prefix="<<aPrefix<<" attached to node "<<i);
-			  consumerHelper.SetPrefix(aPrefix);
+			  //consumerHelper.SetPrefix(aPrefix);
 			  NS_LOG_DEBUG("prefix2="<<aPrefix<<" attached to node "<<i);
 			  consumerHelper.SetAttribute("Frequency", StringValue("25"));  //128 = 1Mbps(/8/1024), 512Kbps(/8/1024)=64
 			  NS_LOG_DEBUG("prefix3="<<aPrefix<<" attached to node "<<i);
