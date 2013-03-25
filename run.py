@@ -26,7 +26,7 @@ import threading
 IS_MT = True #Multi Threads Run
 IS_REFRESH = False
 
-OUT = "output-cdn"
+OUT = "output"
 DEBUG = False
 
 
