@@ -1,12 +1,14 @@
 #! /usr/bin/python
 import sys
-import matplotlib
-matplotlib.use("pdf")
 import platform
 """the platform of the system"""
 HOSTOS = platform.system() 
 
 import matplotlib.pyplot as plt
+import matplotlib
+matplotlib.use('Agg')
+#matplotlib.use("pdf")
+
 import md5
 import os, os.path
 import signal, sys, time
@@ -24,7 +26,7 @@ import threading
 IS_MT = True #Multi Threads Run
 IS_REFRESH = False
 
-OUT = "output"
+OUT = "output-cdn"
 DEBUG = False
 
 
@@ -245,8 +247,12 @@ class Case(Manager, threading.Thread):
         
         global AliveCaseCounter
         AliveCaseCounter -= 1
-        data_labels = ["FIB!", "PDC!","Ist", "DataGen", "DataRec", "NackRec", "Row", "LastDL", "FullDL", "Hop", "reTX"]
-        self.log.info("< " + self.id+" ends. Data:"+str({data_labels[i]+str(i):round(self.data[i], 3) for i in range(len(self.data))})+". Remained: "+str(AliveCaseCounter))
+        data_labels = ["FIB!", "PDC!","Ist", "DataGen", "DataRec", "NackRec", "Row", "LastDL", "FullDL", "Hop", "reTX", "FullHop"]
+        
+        #self.log.info("< " + self.id+" ends. Data:"+str({data_labels[i]+str(i):round(self.data[i], 3) for i in range(len(self.data))})+". Remained: "+str(AliveCaseCounter))
+        self.log.info(str(self.data))
+        #t = {str(i):"at" for i in range(3)}
+        #self.log.info("< " + self.id+" ends. Data:"+str({str(i):"at" for i in range(len(self.data))})+". Remained: "+str(AliveCaseCounter))
         
     
     def stats(self):
@@ -263,6 +269,7 @@ class Case(Manager, threading.Thread):
         fulldelaysum = 0
         retxsum = 0
         hopsum = 0
+        fullhopsum = 0
         
         f = open(self.trace)
         for row in f.readlines():
@@ -287,6 +294,7 @@ class Case(Manager, threading.Thread):
             elif kind == "FullDelay":
                 fulldelaysum += value
                 retxsum += retx
+                fullhopsum += hop * retx
             else:
                 pass
             
@@ -297,8 +305,8 @@ class Case(Manager, threading.Thread):
             self.log.warn("count == 0")    
         #tracerst = cmp(self.trace)
         
-                            #index 5        6                    7                8                9
-        self.data = self.data + [count, lastdelaysum/count, fulldelaysum/count, hopsum/count, retxsum/count]
+                            #index 5        6                    7                8                9            
+        self.data = self.data + [count, lastdelaysum/count, fulldelaysum/count, hopsum/count, retxsum/count, fullhopsum/count]
         #rd, avglast, avgfull, avghop, avgretx = cmp(self.trace)
         
         
@@ -385,18 +393,19 @@ class Figure(Manager):
         such as title, xlabel, ylabel, etc
     """
     def __init__(self, id, lines, **kwargs):
-        Manager.__init__(self, id, outType=".pdf")
+        Manager.__init__(self, id, outType=".eps")
         self.detail = os.path.join(OUT, self.__class__.__name__, self.id+".dat")
         
         self.lines = lines
         self.style = kwargs["style"] if "style" in kwargs else "o-"
         
         self.title = kwargs["title"] if "title" in kwargs else None
-        self.xlabel = kwargs["xlabel"] if "xlabel" in kwargs else "Duration(Second)"
+        self.xlabel = kwargs["xlabel"] if "xlabel" in kwargs else "Simulation Time(Second)"
         
         self.ylabel = kwargs["ylabel"] if "ylabel" in kwargs else None
         self.ymin = kwargs["ymin"] if "ymin" in kwargs else None
         self.ymax = kwargs["ymax"] if "ymax" in kwargs else None
+        self.legendloc = kwargs["legendloc"] if "legendloc" in kwargs else "upper right"
         
         self.kwargs = kwargs
         
@@ -422,7 +431,7 @@ class Figure(Manager):
         if self.ymax != None:
             plt.ylim(ymax=self.ymax)
         #location: http://matplotlib.org/api/pyplot_api.html
-        plt.legend(loc="upper left")
+        plt.legend(loc=self.legendloc)
         self.log.debug(self.id+" fig save to "+self.out) 
         plt.savefig(self.out)
         plt.close()
@@ -530,7 +539,7 @@ class God(Manager):
             title = Titles[i]
             ylabel = "#-" if i>=len(YLabels) else YLabels[i]
 
-            fig = self.say(yindex, id="network-state", title=title, ylabel=ylabel, ymin=0, ymax=1, nacks=["false"])
+            fig = self.say(yindex, id="network-state", title=title, ylabel=ylabel, ymin=0, ymax=1, nacks=["false"], legendloc="center right")
             figs.append(fig)
         
         return figs
@@ -551,20 +560,28 @@ class God(Manager):
     def wenesday(self):
         yindex = 8
         id = "full-delay"
-        ylabel = "Delay (ms)"
+        ylabel = "Request Delay (ms)"
         nacks = ["true", "false"]
         fig = self.say(yindex=yindex, id=id, ylabel=ylabel, nacks=nacks)
     
     def thursday(self):
         yindex = 10
         id = "reTransmit"
-        ylabel = "Avg ReTransmit#"
+        ylabel = "Number of Retransmission"
         fig = self.say(yindex=yindex, id=id, ylabel=ylabel)
         
+        legendloc = "center right"
         yindex = 9
-        id = "avghop"
-        ylabel = "Avg Hops#"
-        fig = self.say(yindex=yindex, id=id, ylabel=ylabel)
+        id = "avgsingleTriphop"
+        ylabel = "Average Single Trip Hops"
+        fig = self.say(yindex=yindex, id=id, ylabel=ylabel, legendloc=legendloc)
+        
+        legendloc = "upper right"
+        
+        yindex = 11
+        id = "avgTransmssionhop"
+        ylabel = "Average Transmission Hops"
+        fig = self.say(yindex=yindex, id=id, ylabel=ylabel, legendloc=legendloc)
         
         
     def say(self, yindex, **kwargs):
@@ -626,7 +643,7 @@ class God(Manager):
                             linelabel = "IP"
                         else:
                             if nack == "true":
-                                linelabel = "NDN with Adaptive Routing"
+                                linelabel = "NDN with NACK"
                             else:
                                 linelabel = "NDN"
                         
@@ -740,4 +757,5 @@ if __name__=="__main__":
                     case.join()
                     
             print "test finish"
+            
             
