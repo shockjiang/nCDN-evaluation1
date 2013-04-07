@@ -110,7 +110,7 @@ int main (int argc, char *argv[])
 	LogComponentEnable("ShockExperiment", LOG_LEVEL_INFO); //all-logic,function, info, debug, warn, error, uncond
 	LogComponentEnable("ndn.fib.Entry", LOG_LEVEL_FUNCTION);
 	LogComponentEnable("ndn.CDNIPApp", LOG_LEVEL_INFO);
-	LogComponentEnable("ndn.L3Protocol", LOG_LEVEL_LOGIC);
+	//LogComponentEnable("ndn.L3Protocol", LOG_LEVEL_LOGIC);
 
 	std::string format ("Inet");
 	std::string input ("shock/input/sprint-topology.txt");
