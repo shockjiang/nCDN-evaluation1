@@ -98,7 +98,7 @@ int main (int argc, char *argv[])
 	LogComponentEnable("InetTopologyReader", LOG_LEVEL_INFO);
 	LogComponentEnable("ndn.fw.Nacks", LOG_LEVEL_DEBUG);
 	LogComponentEnable("ndn.fw", LOG_LEVEL_FUNCTION);
-//	LogComponentEnable("ndn.fw.Nacks", LOG_LEVEL_DEBUG);
+	LogComponentEnable("ndn.pit.Entry", LOG_LEVEL_FUNCTION);
 //	LogComponentEnable("ndn.fw.Nacks", LOG_LEVEL_DEBUG);
 //	LogComponentEnable("ndn.fw.Nacks", LOG_LEVEL_DEBUG);
 //	LogComponentEnable("ndn.fw.Nacks", LOG_LEVEL_DEBUG);
