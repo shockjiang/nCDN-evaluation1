@@ -97,14 +97,20 @@ int main (int argc, char *argv[])
 	LogComponentEnable("ndn.Producer", LOG_LEVEL_FUNCTION);
 	LogComponentEnable("InetTopologyReader", LOG_LEVEL_INFO);
 	LogComponentEnable("ndn.fw.Nacks", LOG_LEVEL_DEBUG);
-	//LogComponentEnable("ndn.cs.Lru", LOG_LEVEL_INFO);
+	LogComponentEnable("ndn.fw", LOG_LEVEL_FUNCTION);
+//	LogComponentEnable("ndn.fw.Nacks", LOG_LEVEL_DEBUG);
+//	LogComponentEnable("ndn.fw.Nacks", LOG_LEVEL_DEBUG);
+//	LogComponentEnable("ndn.fw.Nacks", LOG_LEVEL_DEBUG);
+//	LogComponentEnable("ndn.fw.Nacks", LOG_LEVEL_DEBUG);
+//	//LogComponentEnable("ndn.cs.Lru", LOG_LEVEL_INFO);
 	LogComponentEnable("ndn.GlobalRoutingHelper", LOG_LEVEL_DEBUG);
 	LogComponentEnable("ndn.ConsumerZipfMandelbrot", LOG_LEVEL_INFO);
+	LogComponentEnable("ndn.ConsumerCbr", LOG_LEVEL_INFO);
 	LogComponentEnable("ndn.Consumer", LOG_LEVEL_INFO);
 	LogComponentEnable("ShockExperiment", LOG_LEVEL_INFO); //all-logic,function, info, debug, warn, error, uncond
 	LogComponentEnable("ndn.fib.Entry", LOG_LEVEL_FUNCTION);
 	LogComponentEnable("ndn.CDNIPApp", LOG_LEVEL_INFO);
-
+	LogComponentEnable("ndn.L3Protocol", LOG_LEVEL_LOGIC);
 
 	std::string format ("Inet");
 	std::string input ("shock/input/sprint-topology.txt");
