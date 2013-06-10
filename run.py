@@ -1,13 +1,16 @@
-#! /usr/bin/python
+#! /usr/bin/python2.7
 import sys
 import platform
 """the platform of the system"""
 HOSTOS = platform.system() 
 
-import matplotlib.pyplot as plt
+
+
 import matplotlib
 matplotlib.use('Agg')
 #matplotlib.use("pdf")
+import matplotlib.pyplot as plt
+
 
 import md5
 import os, os.path
@@ -24,8 +27,8 @@ import threading
 
 
 IS_MT = True #Multi Threads Run
+IS_REFRESH = True
 IS_REFRESH = False
-
 OUT = "output"
 DEBUG = False
 
@@ -100,7 +103,7 @@ class Manager:
         self.daemon = True
         self.isMT = IS_MT
         self.isRefresh = IS_REFRESH
-        
+        self.t0 = time.time()
         
         self.log = logging.getLogger(self.__class__.__name__)
         
@@ -118,572 +121,31 @@ class Manager:
         if "outType" in kwargs:
             outType = kwargs["outType"]
         self.out = os.path.join(self.out, self.id+outType)
-
-class Case(Manager, threading.Thread):
-    """ run program/simulation case, trace file is printed to self.trace, console msg is printed to self.output
-        and self.out is stored the statstical information
-        
-        self.data
-    """
     
-
-    class DataSchema:
-        def __init__(self, label, keyword, match="left", desc=None):
-            self.label = label
-            self.keyword = keyword
-            self.match = match #left, right and middle
-        
-    class DataCounter:
-        def __init__(self, schemas):
-            self.schemas = schemas
-            
-            self.dim = 1
-            if type(self.schemas) == list:
-                self.dim = len(schemas)
-                
-            self.counts = [0 for i in range(self.dim)]
-        
-        def count(self, row):
-            if row.startswith("#"):
-                return
-            
-            for i in range(self.dim):
-                schema = self.schemas[i]
-                
-                if schema.match == "left":
-                    if row.startswith(schema.keyword):
-                        self.counts[i] += 1
-                elif schema.match == "right":
-                    if row.endswith(schema.keyword):
-                        self.counts[i] += 1
-                elif schema.match == "middle":
-                    if row.find(shema.keyword)>=0:
-                        self.counts[i] += 1
-    UPDATE_FLAG = "- Change Status from" #green-yellow-red.cc UpdateStatus, ndn-fib-entry.cc Row90,
-                # "- Change Status from"
-    PRODUCER_FLAG = "! Change Data Producer"
-    INTEREST_FLAG = "> Interest for"  #ndn-consumer.cc Row210
-    DATA_FLAG = "+ Respodning with ContentObject" #xiaoke.cc SinkIst, a TracedCallback
-    DATA_ARRIVE = "< DATA for" #ndn-consumer.cc Row256
-    NACK_ARRIVE = "< NACK for" #ndn-consumer.cc Row300
-    STATS_FLAGS = [UPDATE_FLAG, INTEREST_FLAG, DATA_FLAG, DATA_ARRIVE, NACK_ARRIVE]
-    
-    DATA_LABELS = ["Update", "Ist", "DataNew", "DataMet", "NackMet"]
-            
-            
-    FIB_UPDATE = DataSchema(label="Update", keyword=UPDATE_FLAG, desc="FIB entry changing status", match="left")
-    PRODUCER_UPDATE = DataSchema(label="Producer Change", keyword=PRODUCER_FLAG, desc="consumer change its producer", match="left")
-    IST_NEW = DataSchema(label="Ist", keyword="> Interest for", match="left", desc="Interest Sent excluding Forwarding")
-    DATA_NEW = DataSchema(label="DataNew", keyword="+ Respodning with ContentObject", match="left", desc="producer gernates new content")
-    DATA_GOTTEN = DataSchema(label="DataGotten", keyword="< DATA for", match="left", desc="Data Received by Consumer")
-    NACK_GOTTEN = DataSchema(label="NackGotten", keyword="< NACK for", match="left", desc="Nack Received by Consumer")
-    
-    SCHEMAS=[FIB_UPDATE, PRODUCER_UPDATE, IST_NEW, DATA_NEW, DATA_GOTTEN, NACK_GOTTEN]
-    
-    def __init__(self, id, **kwargs):
-        threading.Thread.__init__(self)
-        Manager.__init__(self, id)
-        
-        self.cmd = "./waf --run \"xiaoke "
-        self.trace = os.path.join(OUT, self.__class__.__name__, self.id+".trace") #trace out put
-        self.output = os.path.join(OUT, self.__class__.__name__, self.id+".output") #case run console output
-        
-        #./waf --run "xiaoke --trace=./shock/output2-debug/Dot/DOT-ConsumerCbr-csZero-producer1-nackfalse-duration1.trace 
-        #--nack=false 
-        #--producerNum=1 
-        #--consumerClass=ConsumerCbr 
-        #--seed=3 
-        #--duration=1">output2-debug/Dot/DOT-ConsumerCbr-csZero-producer1-nackfalse-duration1.dat 2>&1
-        self.cmd += " --trace="
-        self.cmd += os.path.join("shock", self.trace)
-        self.cmd += " --csSize="
-        self.cmd += str(kwargs["csSize"]) if "csSize" in kwargs else "Zero"
-        self.cmd += " --nack="
-        self.cmd +=  kwargs["nack"] if "nack" in kwargs else "true"
-        self.cmd += " --producerNum="
-        self.cmd += str(kwargs["producerNum"]) if "producerNum" in kwargs else "1"
-        self.cmd += " --consumerClass="
-        self.cmd += kwargs["consumerClass"] if "consumerClass" in kwargs else "ConsumerCbr"
-        self.cmd += " --seed="
-        self.cmd += str(kwargs["seed"]) if "seed" in kwargs else "3"
-        self.cmd += " --duration="
-        self.cmd += str(kwargs["duration"]) if "duration" in kwargs else "1"
-
-        
-        self.cmd +=  "\"";
-        self.cmd += ">"+self.output+" 2>&1"  
-        
-        self.counter =  Case.DataCounter(Case.SCHEMAS)
-        self.data = self.counter.counts
-        
-        
-    def run(self):
-        """ run the case, after running, the statstical result is held in self.data as list
-        """
-        self.log.info("> " +self.id+" begins")
-        if not self.isRefresh and ((os.path.exists(self.output) and os.path.exists(self.trace)) or os.path.exists(self.out)):
-            if os.path.exists(self.out):
-                self.read()
-            else:
-                self.stats()
-                self.write()
-            self.log.info("= "+self.out+" exists")
-
-        else:    
-            self.log.info("+ "+ "CMD: "+self.cmd)
-            rst = os.system(self.cmd)
-            if rst != 0:
-                self.log.error("CMD: "+self.cmd+" return "+str(rst)+" (0 is OK)")
-                if (os.path.exists(self.out)):
-                    os.remove(self.out)
-                if (os.path.exists(self.trace)):
-                    os.remove(self.trace)
-                if (os.path.exists(self.output)):
-                    os.remove(self.output)
-                
-                return
-            self.stats()
-            self.write()
-        
-        global AliveCaseCounter
-        AliveCaseCounter -= 1
-        data_labels = ["FIB!", "PDC!","Ist", "DataGen", "DataRec", "NackRec", "Row", "LastDL", "FullDL", "Hop", "reTX", "FullHop"]
-        
-        #self.log.info("< " + self.id+" ends. Data:"+str({data_labels[i]+str(i):round(self.data[i], 3) for i in range(len(self.data))})+". Remained: "+str(AliveCaseCounter))
-        self.log.info(str(self.data))
-        #t = {str(i):"at" for i in range(3)}
-        #self.log.info("< " + self.id+" ends. Data:"+str({str(i):"at" for i in range(len(self.data))})+". Remained: "+str(AliveCaseCounter))
-        
-    
-    def stats(self):
-        """ stats on the output of the runed case
-        """
-        f = open(self.output)
-        
-        for row in f.readlines():
-            self.counter.count(row)
-        
-        
-        count = 0
-        lastdelaysum = 0
-        fulldelaysum = 0
-        retxsum = 0
-        hopsum = 0
-        fullhopsum = 0
-        
-        f = open(self.trace)
-        for row in f.readlines():
-            if row.startswith("Time"):
-                continue
-            parts = row.split()
-            assert len(parts) == 9, "row="+str(j)+" len(parts)="+str(len(parts))+" (9 is OK)"
-            
-            node = parts[1]
-            seq = int(parts[3])
-            kind = parts[4]  #type
-            value = float(parts[6])
-            retx = int(parts[7])
-            hop = int(parts[8])
-            
-            if hop == -1:
-                continue
-            count += 1
-            if kind == "LastDelay":
-                lastdelaysum += value
-                hopsum += hop
-            elif kind == "FullDelay":
-                fulldelaysum += value
-                retxsum += retx
-                fullhopsum += hop * retx
-            else:
-                pass
-            
-            
-        count = count/2.0
-        if count == 0:
-            count = 1
-            self.log.warn("count == 0")    
-        #tracerst = cmp(self.trace)
-        
-                            #index 5        6                    7                8                9            
-        self.data = self.data + [count, lastdelaysum/count, fulldelaysum/count, hopsum/count, retxsum/count, fullhopsum/count]
-        #rd, avglast, avgfull, avghop, avgretx = cmp(self.trace)
-        
-        
-        
-    def write(self):
-        """ write the statistical data to file
-        """
-        if self.data:
-            f = open(self.out, "w")
-            f.write("#"+self.cmd+"\n")
-            for v in self.data:
-                f.write(str(v)+"\t")
-            f.close()
-        else:
-            self.log.warn("! "+self.id+" data is None")
-        
-    
-    def read(self):
-        """ read the output and trace file of the case, and get the statistical data
-        """
-        f = open(self.out)
-        for l in f.readlines():
-            if l.startswith("#"):
-                continue
-            record = l.split()
-            record = [float(i) for i in record]
-        
-        self.data = record
-        
-        self.log.info(self.id+" data="+str(self.data))
-
-
-class Dot(Manager):
-    """ Information of Dot on the Line
-        
-        self.x, self.y
-    """
-    
-    def __init__(self, id, case, x, yindex, **kwargs):
-        Manager.__init__(self, id)
-        try:
-            if type(yindex) == int:
-                self.y = case.data[yindex] 
-            elif type(yindex) == str:
-                tmps = yindex.split(".")  #4.1
-                assert len(tmps) == 2, "tmps="+str(tmps)
-                t1 = int(tmps[0])
-                t2 = int(tmps[1])
-                if case.data[t2] == 0:
-                    self.y = 0
-                    log.warn(self.id+" gives an warnning. self.y=0")
-                else:
-                    self.y = case.data[t1]/float(case.data[t2])
-                
-            self.log.debug(self.id+" y="+str(self.y))
-            self.x = x
-        except IndexError:
-            self.log.error(self.id+" Index out of range. yindex="+str(yindex))
-            
-        #self.y = case.data[yindex]
-        
-        
-class Line(Manager):
-    """ informaion of Line on the figure
-    
-        self.xs, self.ys
-    """
-    def __init__(self, id, dots, **kwargs):
-        Manager.__init__(self, id)
-        self.dots = dots
-        self.label = kwargs["label"] if "label" in kwargs else None
-        self.xs = []
-        self.ys = []
-        for dot in dots:
-            self.xs.append(dot.x)
-            self.ys.append(dot.y)
-        self.log.info(self.id+" xs="+str(self.xs))
-        self.log.info(self.id+" ys="+str(self.ys))
-        
-    
-        
-class Figure(Manager):
-    """ information of Figure
-        such as title, xlabel, ylabel, etc
-    """
-    def __init__(self, id, lines, **kwargs):
-        Manager.__init__(self, id, outType=".eps")
-        self.detail = os.path.join(OUT, self.__class__.__name__, self.id+".dat")
-        
-        self.lines = lines
-        self.style = kwargs["style"] if "style" in kwargs else "o-"
-        
-        self.title = kwargs["title"] if "title" in kwargs else None
-        self.xlabel = kwargs["xlabel"] if "xlabel" in kwargs else "Simulation Time(Second)"
-        
-        self.ylabel = kwargs["ylabel"] if "ylabel" in kwargs else None
-        self.ymin = kwargs["ymin"] if "ymin" in kwargs else None
-        self.ymax = kwargs["ymax"] if "ymax" in kwargs else None
-        self.legendloc = kwargs["legendloc"] if "legendloc" in kwargs else "upper right"
-        
-        self.kwargs = kwargs
-        
-    def draw(self):
-        self.log.debug(self.id+" begin to draw ")
-        plt.clf()
-        
-        for line in self.lines:
-            if line.label == None:
-                plt.plot(line.xs, line.ys, self.style)
-            else:
-                plt.plot(line.xs, line.ys, self.style, label=line.label)
-        
-    
-        plt.grid(True)
-        plt.xlabel(self.xlabel);
-        plt.ylabel(self.ylabel);
-        if self.title != None:
-            plt.title(self.title)
-            
-        if self.ymin != None:
-            plt.ylim(ymin=self.ymin)
-        if self.ymax != None:
-            plt.ylim(ymax=self.ymax)
-        #location: http://matplotlib.org/api/pyplot_api.html
-        plt.legend(loc=self.legendloc)
-        self.log.debug(self.id+" fig save to "+self.out) 
-        plt.savefig(self.out)
-        plt.close()
-        
-        self.write()
-        self.log.info(self.id+" finishes")
-        
-    def write(self):
-        f = open(self.detail, "w")
-        if self.lines == None or len(self.lines) == 0:
-            return
-        f.write("#Duration\t")
-        
-        for line in self.lines:
-            f.write("%15.10s" %(line.label))
-        f.write("\n")
-        xs = self.lines[0].xs
-        for i in range(len(xs)):
-            x = xs[i]
-            
-            f.write("%9.8s" %(x))
-            
-            for line in self.lines:
-                y = line.ys[i]
-                f.write("%15.10s" %(y))
-            
-            f.write("\n")
-
-
-class Paper(Manager):
-    """ information of paper, which includes multiple figure
-    
-        to do: run latex command to generate paper directly
-    """
-    def __init__(self, id, figs, **kwargs):
-        Manager.__init__(self, id)
-        self.figs = figs
-
-
-
-class God(Manager):
-    """ God to control all the processes of the program, when to run cases, how to assign data and draw figs
-    
-    """
-    
-    def __init__(self):
-        """ God will run all the cases needed
+    def parseId(self, dic):
+        """ get the id from attributes held in dic
         
         """
-        Manager.__init__(self, id="GOD")
-        self.t0 = time.time()
-        self.paperid = "paper-cdn-over-ndn"
-        self.t1 = None
-        
-        dic = {}
-        cases = {}
-        #CS_LIST, CONSUMER_CLASS_LIST
-        for csSize in CS_LIST:
-            dic["csSize"] = csSize
-            for consumerClass in CONSUMER_CLASS_LIST:
-                dic["consumerClass"] = consumerClass
-                for producerNum in range(1, MAX_PRODUCER_NUM+1):          
-                    dic["producerNum"] = producerNum
-                    for nack in ["true", "false"]:
-                        dic["nack"] = nack
-                        for duration in range(1, MAX_DURATION+1):
-                            dic["duration"] = duration
-                            id = "Case" + self.parseId(dic)
-                            
-                            case = Case(id=id, **dic)
-                            cases[id] = case
-        self.cases = cases
-        
-    def setup(self):
-        global AliveCaseCounter
-        AliveCaseCounter = len(self.cases)
-        
-        for k, case in self.cases.items():
-            case.start()
-                
-        self.log.info("begin to wait all threads. Thread number: "+str(AliveCaseCounter))
-        for k, case in self.cases.items():
-            if case.isAlive():
-                case.join()
-
-        self.log.info("Cases Run end!")
-    
-    
-    def create(self):
-        """ God says a lot to create the univesity
-        """
-        self.monday()
-        self.tuesday()
-        self.wenesday()
-        self.thursday()
-    def monday(self):
-        """ God work on Monday
-        """
-        figs = []
-        Yindexes = ["4.2"]
-        Titles = ["Network State"]
-        YLabels = ["Data/Interest"]
-        for i in range(len(Yindexes)):
-            yindex = Yindexes[i]
-            title = Titles[i]
-            ylabel = "#-" if i>=len(YLabels) else YLabels[i]
-
-            fig = self.say(yindex, id="network-state", title=title, ylabel=ylabel, ymin=0, ymax=1, nacks=["false"], legendloc="center right")
-            figs.append(fig)
-        
-        return figs
-#        paperid = "paper-cdn"
-#        paper = Paper(id=paperid, figs=figs)
-#        self.paperid = paperid
-#        
-#        self.log.info("Paper Run end!")
-
-    def tuesday(self):
-        yindex = 4
-        id = "data-received"
-        ylabel = "Data Received #"
-        nacks = ["true", "false"]
-        fig = self.say(yindex=yindex, id=id, ylabel=ylabel, nacks=nacks)
-    
-    
-    def wenesday(self):
-        yindex = 8
-        id = "full-delay"
-        ylabel = "Request Delay (ms)"
-        nacks = ["true", "false"]
-        fig = self.say(yindex=yindex, id=id, ylabel=ylabel, nacks=nacks)
-    
-    def thursday(self):
-        yindex = 10
-        id = "reTransmit"
-        ylabel = "Number of Retransmission"
-        fig = self.say(yindex=yindex, id=id, ylabel=ylabel)
-        
-        legendloc = "center right"
-        yindex = 9
-        id = "avgsingleTriphop"
-        ylabel = "Average Single Trip Hops"
-        fig = self.say(yindex=yindex, id=id, ylabel=ylabel, legendloc=legendloc)
-        
-        legendloc = "upper right"
-        
-        yindex = 11
-        id = "avgTransmssionhop"
-        ylabel = "Average Transmission Hops"
-        fig = self.say(yindex=yindex, id=id, ylabel=ylabel, legendloc=legendloc)
-        
-        
-    def say(self, yindex, **kwargs):
-        """ God creates the universe, "God says ..."
-        
-        """
-        
-        #for yindex in [1, 4, "4.1"]:
-        
-        
-        nacks = ["ture", "false"]
-        if "nacks" in kwargs:
-            nacks = kwargs["nacks"]
-        
-        producers = [3]
-        if "producers" in kwargs:
-            producers = kwargs["producers"]    
-            
-            
-        if "id" in kwargs:
-            figid = kwargs["id"]
-            kwargs.pop("id")
-        else:
-            figid ="Fig-"
-            if type(yindex) == int:
-                id = Case.DATA_LABELS[yindex]
-            elif type(yindex) == str:
-                tmps = yindex.split(".")
-                assert len(tmps) == 2, "tmps="+str(tmps)
-                t1 = int(tmps[0])
-                t2 = int(tmps[1])
-                id = Case.DATA_LABELS[t1] + "=" + Case.DATA_LABELS[t2]     
-                figid += id
-        
-        lines = []
-        
-        dic = {}
-        linelabel = ""
-        for csSize in CS_LIST:
-            dic["csSize"] = csSize
-            for consumerClass in CONSUMER_CLASS_LIST:#["ConsumerZipfMandelbrot"]: # CONSUMER_CLASS_LIST:
-            #for consumerClass in ["ConsumerZipfMandelbrot"]: # CONSUMER_CLASS_LIST:
-            #for consumerClass in CONSUMER_CLASS_LIST:
-                dic["consumerClass"] = consumerClass
-                if consumerClass == "CDNIPApp":
-                    nacks = ["false"]
-                else:
-                    nacks = ["true", "false"]
-                
-                for nack in nacks:
-                #for nack in ["true", "false"]:
-                    dic["nack"] = nack
-                    #for producerNum in range(2, MAX_PRODUCER_NUM+1):
-                    for producerNum in producers:
-                        dic["producerNum"] = producerNum
-                                
-                        
-                        if consumerClass == "CDNIPApp":
-                            linelabel = "IP"
-                        else:
-                            if nack == "true":
-                                linelabel = "NDN with NACK"
-                            else:
-                                linelabel = "NDN"
-                        
-                        #linelabel += ", producerNum="+str(producerNum)
-                        #linelabel = None
-                        lineid = "Line"+self.parseId(dic)
-
-                        dots = []
-                        for duration in range(1, MAX_DURATION+1):
-                            dic["duration"] = duration
-                            atts = self.parseId(dic)
-                            id = "Case" + atts
-                            case = self.cases[id]
-                            
-                            dot = Dot(id="Dot"+atts, case=case, x=duration, yindex=yindex, producerNum=producerNum)
-                            dots.append(dot)
-                        line = Line(id=lineid, dots=dots, label=linelabel)
-                        #line = Line(id=lineid, dots=dots)
-                        lines.append(line)
-                        
-        title = kwargs["title"] if "title" in kwargs else "title3"
-        ylabel = kwargs["ylabel"] if "ylabel" in kwargs else "ylabel3"
-        fig = Figure(id=figid, lines=lines, **kwargs)
-        fig.draw()   
-        return fig
-        
-
-    def rest(self):
-        """ God notifies people it create everything and has a rest
-        
-        """
+        id = ""
+        keys = dic.keys()
+        keys.sort()
+        for k in keys:
+            v = dic[k]
+            id += "-"+str(k)+str(v)
+        return id
+    def notify(self, way="email", **msg):
         self.t1 = time.time()
-        data = self.paperid+" ends on "+str(time.strftime('%Y-%m-%d %H:%M:%S',time.localtime(self.t1)))+ \
+        data = self.id+" ends on "+str(time.strftime('%Y-%m-%d %H:%M:%S',time.localtime(self.t1)))+ \
             " after running for "+str(self.t1 - self.t0)+" seconds"
+        data = msg.get("data", data)
+        
         self.log.info(data)
-        if HOSTOS.startswith("Darwin"):
-            #pass
+        print data
+        if way == "print":
             return
+        
         from smtplib import SMTP
-        TO = ["shock.jiang@gmail.com"]
+        TO = msg.get("to", ["shock.jiang@gmail.com"])
         FROM = "06jxk@163.com"
         SMTP_HOST = "smtp.163.com"
         user= "06jxk"
@@ -701,61 +163,567 @@ class God(Manager):
         else:
             self.log.info("sending mail finished")
         send.close()
+    
+    
+class Stat(Manager):
+    def __init__(self, id):
+        Manager.__init__(self, id=id)
+        pass
+    
+    def add(self, fp):
+        if not os.path.exists(fp):
+            self.log.error("fp="+fp+" does not exist")
+            return
+        fp = open(fp)
+        rows = fp.readlines()
+        if len(rows) == 0:
+            self.log.error("fp="+fp+" is blank")
+            return
+        row = rows[0]
+        colN = len(row.split())
         
-    def parseId(self, dic):
-        """ get the id from attributes held in dic
+        if not hasattr(self, "data"):
+            #self.data = [0 for i in range(colN)]
+            pass
+    
+        for row in rows:
+            row = row.strip()
+            if row=="" or row.startswith("Time") or row.startswith("#"):
+                continue
+            
+            parts = row.split()
+            ##time    node    I-Ist    O-Ist    D-Ist    I-Data    O-Data    D-Data
+    
+            #0.2        0        4        1        0        21        21        0
+            assert len(parts) == colN, "len(parts)="+str(len(parts))+" ("+str(colN)+" is OK). row="+str(row)
+            
+            
+            
+            
+    def statApp(self, fp):#*.trace
+        if not os.path.exists(fp):
+            self.log.error("fp="+fp+" does not exist")
+            return
+        fp = open(fp)
+        rows = fp.readlines()
+        if len(rows) == 0:
+            self.log.error("fp="+fp+" is blank")
+            return
+        row = rows[0]
+        colN = len(row.split())
+        
+        varname = "app"
+        rowN = 0
+        if not hasattr(self, varname):
+            var = [0 for i in range(2)]
+            exec("self."+varname+"=var")
+            #self.log.info("self."+varname+"="+str(var))
+            pass
+        #Time    Node    AppId    SeqNo    Type    DelayS    DelayUS    RetxCount    HopCount
+        #0.04724    34    1    0    LastDelay    0.04724    47240    1    11           
+        
+        consumers = [2, 10, 12, 22, 34, 38, 44, 50]
+        
+        for row in rows:      
+            row = row.strip()
+            if row=="" or row.startswith("Time") or row.startswith("#"):
+                continue
+            
+            
+            parts = row.split()
+            #assert len(parts)==colN, "len("+parts+")!="+str(colN)
+            assert len(parts) == colN, self.id+": len(parts)="+str(len(parts))+" ("+str(colN)+" is OK). row="+str(row)
+            node = int(parts[1])
+            if not node in consumers:
+                continue
+            
+            delay = float(parts[6])
+            hop = int(parts[8])
+            
+            Type = parts[4]
+            if Type == "FullDelay":
+                continue
+            
+    
+            var[0] += delay
+            var[1] += hop
+            rowN += 1
+        
+        exec("self."+varname+"N=rowN")
+        #self.log.info("self."+varname+"N=varN")
+    def statRate(self, fp): #rate
+        self.log.debug("statRate begin "+fp)
+        if not os.path.exists(fp):
+            self.log.error("fp="+fp+" does not exist")
+            return
+        fp = open(fp)
+        rows = fp.readlines()
+        if len(rows) == 0:
+            self.log.error("fp="+fp+" is blank")
+            return
+        row = rows[0]
+        colN = len(row.split())
+        
+        varname = "rate"
+        rowN = 0
+        if not hasattr(self, varname):
+            var = [0 for i in range(colN)]
+            exec("self."+varname+"=var")
+            pass
+#time    node    I-Ist    O-Ist    D-Ist    I-Data    O-Data    D-Data
+#1        0        432        0        216        0        0        0     
+            
+        data = self.rate
+                    
+        for row in rows:
+            row = row.strip()
+            if row=="" or row.startswith("Time") or row.startswith("#"):
+                continue
+            
+            parts = row.split()
+            ##time    node    I-Ist    O-Ist    D-Ist    I-Data    O-Data    D-Data
+    
+            #0.2        0        4        1        0        21        21        0
+            assert len(parts) == colN, "len(parts)="+str(len(parts))+" ("+str(colN)+" is OK). row="+str(row)
+            
+            #print str(parts)
+            time = float(parts[0])
+            node = int(parts[1])
+            iist = int(parts[2])
+            oist = int(parts[3])
+            dist = int(parts[4])
+            idata = int(parts[5])
+            odata = int(parts[6])
+            ddata = int(parts[7])
+            
+            consumers = [2, 10, 12, 22, 34, 38, 44, 50]
+            if node in consumers:
+                data[0] += idata
+                data[1] += iist
+                data[2] += oist
+                data[3] += dist
+                data[4] += idata
+                data[5] += odata
+                data[6] += ddata
+                #self.log.debug("node="+str(node))
+                rowN += 1
+
+                if ddata > 0:  
+                    self.log.debug("consumer: "+str(parts))
+                continue
+            providers = [8, 9]
+            if node in providers:
+                continue
+            #data[0] += float(time)
+            
+        
+        exec("self."+varname+"N=rowN")
+class Case(Manager, threading.Thread):
+    """ run program/simulation case, trace file is printed to self.trace, console msg is printed to self.output
+        and self.out is stored the statstical information
+        
+        self.data
+    """    
+    LiveN = 0
+    def __init__(self, id, param={}, **kwargs):
+        threading.Thread.__init__(self)
+        Manager.__init__(self, id)
+        
+        self.cmd = "./waf --run \'name-set"
+        self.stat = Stat(id=id)
+        self.param = param
+        
+
+        self.trace = os.path.join(OUT, self.__class__.__name__, self.id+".app") #trace out put
+        self.output = os.path.join(OUT, self.__class__.__name__, self.id+".output") #case run console output
+        self.output = "/dev/null"
+        self.ratetrf = os.path.join(OUT, self.__class__.__name__, self.id+".rate")
+        
+        
+        for key, val in param.items():
+            self.cmd += " --"+key+"="+str(val) 
+        #./waf --run "xiaoke --trace=./shock/output2-debug/Dot/DOT-ConsumerCbr-csZero-producer1-nackfalse-duration1.trace 
+        #--nack=false 
+        #--producerNum=1 
+        #--consumerClass=ConsumerCbr 
+        #--seed=3 
+        #--duration=1">output2-debug/Dot/DOT-ConsumerCbr-csZero-producer1-nackfalse-duration1.dat 2>&1
+        self.cmd += " --trace="
+        self.cmd += os.path.join("shock", self.trace)
+# #         self.cmd += " --csSize="
+# #         self.cmd += str(kwargs["csSize"]) if "csSize" in kwargs else "Zero"
+# #         self.cmd += " --nack="
+# #         self.cmd +=  kwargs["nack"] if "nack" in kwargs else "true"
+# #         self.cmd += " --producerNum="
+# #         self.cmd += str(kwargs["producerNum"]) if "producerNum" in kwargs else "1"
+#         self.cmd += " --consumerClass="
+#         self.cmd += kwargs["consumerClass"] if "consumerClass" in kwargs else "ConsumerCbr"
+#         self.cmd += " --freq="
+#         self.cmd += str(kwargs["freq"]) if "freq" in kwargs else "1"
+#         self.cmd += " --seed="
+#         self.cmd += str(kwargs["seed"]) if "seed" in kwargs else "3"
+#         self.cmd += " --duration="
+#         self.cmd += str(kwargs["duration"]) if "duration" in kwargs else "1"
+    
+        self.cmd += " --ratetrf="
+        self.cmd += os.path.join("shock", self.ratetrf)
+            
+        self.cmd +=  "\'";
+        self.cmd += ">"+self.output+" 2>&1"  
+   
+    def start(self):
+        Case.LiveN += 1
+        threading.Thread.start(self)
+        
+    def run(self):
+        """ run the case, after running, the statstical result is held in self.data as list
+        """
+        #Case.LiveN += 1
+        self.log.info("> " +self.id+" begins")
+        if not self.isRefresh and os.path.exists(self.ratetrf):
+            pass
+        else:    
+            self.log.info("+ "+ "CMD: "+self.cmd)
+            #print os.popen("./waf --run 'shock-test  --ratetrf=shock/output/Case/ist-set.rate'").readlines()
+            
+            #rst = os.system(self.cmd)
+            rst = os.system(self.cmd)
+            if rst != 0:
+                self.log.error("CMD: "+self.cmd+" return "+str(rst)+" (0 is OK). Output: "+self.output)
+                if (os.path.exists(self.out)):
+                    os.remove(self.out)
+                if (os.path.exists(self.trace)):
+                    os.remove(self.trace)
+                if (os.path.exists(self.output)):
+                    os.remove(self.output)
+                
+                #return
+        self.stats()
+        Case.LiveN -= 1
+        self.log.info("< "+str(self.id)+" ends. Live Case Nun ="+str(Case.LiveN))
+        
+        
+    def stats(self):
+        """ stats on the output of the runed case
+        """
+        self.stat.statRate(self.ratetrf)
+        self.stat.statApp(self.trace)
+            
+class Dot():        
+    def __init__(self, x, y):
+        self.x = x
+        self.y = y  
+        
+class Line(Manager):
+    def __init__(self, dots, plt={}, **kwargs):
+        #for dot in dots:
+        dotN = len(dots)
+        self.xs = [dots[i].x for i in range(dotN)]
+        self.ys = [dots[i].y for i in range(dotN)]
+        self.plt = plt
+        
+        
+class Figure(Manager):
+    """ information of Figure
+        such as title, xlabel, ylabel, etc
+    """
+    def __init__(self, id, lines, canvas={}, **kwargs):
+        Manager.__init__(self, id, outType=".pdf")
+        self.detail = os.path.join(OUT, self.__class__.__name__, self.id+".dat")
+        self.lines = lines
+        self.canvas = canvas
+
+#         self.lines = lines
+#         self.style = kwargs["style"] if "style" in kwargs else "o-"
+#         
+#         self.title = kwargs["title"] if "title" in kwargs else None
+#         self.xlabel = kwargs["xlabel"] if "xlabel" in kwargs else None
+#         
+#         self.ylabel = kwargs["ylabel"] if "ylabel" in kwargs else "Number of Packets"
+#         self.ymin = kwargs["ymin"] if "ymin" in kwargs else None
+#         self.ymax = kwargs["ymax"] if "ymax" in kwargs else None
+#         self.legendloc = kwargs["legendloc"] if "legendloc" in kwargs else "upper right"
+#         
+        self.kwargs = kwargs
+        
+    def line(self):
+        self.log.debug(self.id+" begin to draw ")
+        plt.clf()
+        
+        cans = []
+        for line in self.lines:
+            self.log.info("line.xs="+str(line.xs))
+            self.log.info("line.ys="+str(line.ys))
+            self.log.info("plt atts="+str(line.plt))
+            can = plt.plot(line.xs, line.ys, line.plt.pop("style", "o-"), **line.plt)
+            cans.append(can)
+        
+        plt.xlabel(self.canvas.pop("xlabel", " "))
+        plt.ylabel(self.canvas.pop("ylabel", " "))    
+        plt.legend(**self.canvas)
+        
+        
+        plt.grid(True)
+
+        self.log.debug(self.id+" fig save to "+self.out) 
+        plt.savefig(self.out)
+        plt.close()
+        
+        self.log.info(self.id+" ends")
+    
+    
+    def bar(self):
+        self.log.debug(self.id+" begin to draw ")
+        plt.clf()
+        
+        plt.xticks([i+0.3 for i in range(6)], ("Transmission Time", "Hops", "Data Recieved"))
+        self.bars = []
+        for line in self.lines:
+#             if hasattr(line, "label") and line.label != None:
+#                 plt.plot(line.xs, line.ys, self.style, label=line.label)
+#             else:
+#                 plt.plot(line.xs, line.ys, self.style)
+#    
+            print "line.xs=",line.xs
+            print "line.ys=", line.ys       
+            bar = plt.bar(left=line.xs, height=line.ys, width=0.3, bottom=0, **line.plt)
+            self.bars.append(bar)
+            
+        #plt.legend( (p1[0], p2[0]), ('Men', 'Women') )
+        
+        plt.legend((self.bars[i][0] for i in range(len(self.lines))), (self.lines[i].plt["label"] for i in range(len(self.lines))))
+        #for bar in self.bars:
+
+                
+        plt.grid(True)
+        if self.xlabel != None:
+            plt.xlabel(self.xlabel);
+        if self.ylabel != None:
+            plt.ylabel(self.ylabel);
+        if self.title != None:
+            plt.title(self.title)
+            
+        if self.ymin != None:
+            plt.ylim(ymin=self.ymin)
+        if self.ymax != None:
+            plt.ylim(ymax=self.ymax)
+        #location: http://matplotlib.org/api/pyplot_api.html
+        plt.legend(loc=self.legendloc)
+        self.log.debug(self.id+" fig save to "+self.out) 
+        plt.savefig(self.out)
+        plt.close()
+        
+        self.log.info(self.id+" finishes")
+    
+
+# class Paper(Manager):
+#     """ information of paper, which includes multiple figure
+#     
+#         to do: run latex command to generate paper directly
+#     """
+#     def __init__(self, id, figs, **kwargs):
+#         Manager.__init__(self, id)
+#         self.figs = figs
+#         OUT = os.path.join(OUT, id)
+
+
+
+class God(Manager):
+    """ God to control all the processes of the program, when to run cases, how to assign data and draw figs
+    
+    """
+    
+    def __init__(self, paper):
+        """ God will run all the cases needed
         
         """
-        id = ""
-        keys = dic.keys()
-        keys.sort()
-        for k in keys:
-            v = dic[k]
-            id += "-"+str(k)+str(v)
-        return id
-    
-    
-if __name__=="__main__":
-    av = sys.argv
-    if len(av) == 1:
-        god = God()
-        god.setup()
-        god.create()
-        god.rest()
-
-    for i in range(1, len(av)):
-        arg = av[i]
-        if (arg == "clear"):
-            pass
-        elif (arg == "test"):
+        Manager.__init__(self, id="GOD")
+        self.t0 = time.time()
+        global OUT
+        OUT = os.path.join(OUT, paper)
+        
+#         dir = os.path.split(os.path.realpath(__file__))[0]
+#         os.chdir(dir)
+        self.cases = {}
+        
+        self.freqs = [0.01, 0.05, 0.1, 0.2, 0.3, 0.5, 0.6, 0.8, 1, 1.2, 1.5, 2, 3, 5, 7, 8, 10, 12, 15, 18, 20,22,25,28, 30, 32, 35, 38]
+        self.freqs = [0.01, 0.05, 0.1, 0.2, 0.3, 0.5, 0.6, 0.8]
+        self.freqs += [1, 1.2, 1.5, 1.8, 1.9, 2.0, 2.1, 2.2, 2.3, 2.5, 2.8, 3, 3.2,  3.4, 3.5, 3.6, 3.7, 3.8, 4, 4.5, 5,6, 7, 8]
+        
+        #self.freqs += [10, 15, 20, 30]
+        #self.freqs = [1, 1.2, 1.5, 2, 3, 5, 7, 8, 10, 12, 15, 18, 20]
+        #self.freqs = [0.01, 0.05, 0.1, 0.2, 0.3, 0.5, 0.6, 0.8, 1]
+        self.freqs = [self.freqs[i]* 10 for i in range(len(self.freqs))]
+        self.consumers = ["ConsumerCbr", "ConsumerSet"]
+        
+        
+    def setup(self):
+        cases = self.cases
+        for freq in self.freqs:
             dic = {}
-            duration = 1
-            producerNum = 2
-            dic["duration"] = duration
-            dic["producerNum"] = producerNum
+            dic["freq"] = freq
+            for consumer in self.consumers:
+                dic["consumerClass"] = consumer
+                
+                id = self.parseId(dic)
+                case = Case(id=id, param=dic, **dic)
+                cases[id] = case
+                
+        
+        for id, case in cases.items():
+            case.start()
             
-            case1 = Case(id="test-nacktrue", nack="true", **dic)
-            case1.isRefresh = True
+        for id, case in cases.items():
+            if case.isAlive():
+                case.join()
             
+            #case.stats()
+        
+        
+        
+    def sayApp(self):
+        figs = {}
+        lines = []
+        lines2 = []
+        lines3 = []
+        #lines4 = []
+        for consumer in self.consumers:
+            param = {}
+            param["consumerClass"] = consumer
+            dots = []
+            dots2 = []
+            dots3 = []
+            #dots4 = []
+            for freq in self.freqs:
+                param["freq"] = freq    
+                id = self.parseId(param)
+                case = self.cases[id]
+                plt = {}
+                if consumer == "ConsumerCbr":
+                    plt["color"] = "y"
+                    plt["label"] = "Normal Interest"
+                    offset = 0
+                else:
+                    plt["color"] = "r"
+                    plt["label"] = "Interest Set"
+                    offset = 0.3
+                dot = Dot(x=freq, y=case.stat.app[0]/float(case.stat.appN))
+                dots.append(dot)
+                
+                dot2 = Dot(x=freq, y=case.stat.app[1]/float(case.stat.appN))
+                dots2.append(dot2)
+                
+                dot3 = Dot(x=freq, y=case.stat.appN)
+                dots3.append(dot3)
+                
+                #dot4 = Dot(x=freq, y=case)
+            line = Line(dots, plt=plt)
+            lines.append(line)
             
-            case2 = Case(id="test-nackfalse", nack="false", **dic)
-            case2.isRefresh = True
+            line2 = Line(dots2, plt=plt)
+            lines2.append(line2)
+
+            line3 = Line(dots3, plt=plt)
+            lines3.append(line3)
+
+        
+        
+        canvas = {}
+        canvas["xlabel"] = "Interest Set Freqency or Equally Interest Freqency(/32)"
+        
+        canvas["ylabel"] = "Transmission Delay (ms)"
+        canvas["loc"] = "lower right"      
+        fig = Figure(id="tx-deplay=freqs", lines=lines, canvas=canvas)
+        fig.line()
+        
+        canvas["xlabel"] = "Interest Set Freqency or Equally Interest Freqency(/32)"
+        canvas["ylabel"] = "Average Transmission Hops"
+        fig2 = Figure(id="hop=freqs", lines=lines2, canvas=canvas)
+        fig2.line()
+        
+        canvas["xlabel"] = "Interest Set Freqency or Equally Interest Freqency(/32)"
+        dots = []
+        for i in range(len(self.freqs)):
+            dot = Dot(x=self.freqs[i], y=32*8*self.freqs[i])
+            dots.append(dot)
+        line = Line(dots, plt)
+        #lines3.append(line)
+        fig3 = Figure(id="data-received", lines=lines3, canvas=canvas)
+        fig3.line()
+        
+        
+    def sayRate(self):
+        figs = {}
+        lines = []
+        lines2 = []
+        lines3 = []
+        for consumer in self.consumers:
+            param = {}
+            param["consumerClass"] = consumer
+            dots = []
+            dots2 = []
+            dots3 = []
+            plt = {}
+            if consumer == "ConsumerCbr":
+                plt["color"] = "y"
+                plt["label"] = "Normal Interest"
+            else:
+                plt["color"] = "r"
+                plt["label"] = "Interest Set"
+                
+                
+            for freq in self.freqs:
+                param["freq"] = freq    
+                id = self.parseId(param)
+                case = self.cases[id]
+                
+                
+                dot = Dot(x=freq, y=case.stat.rate[2])
+                dots.append(dot)
+                
+                dot = Dot(x=freq, y=case.stat.rate[5])
+                dots2.append(dot)
+                
+                dot = Dot(x=freq, y=case.stat.rate[0])
+                dots3.append(dot)
+            line = Line(dots, plt=plt)
+            lines.append(line)
+            if consumer == "ConsumerSet":
+                ds = []
+                for dot in dots:
+                    d = Dot (dot.x, 32*dot.y)
+                    ds.append(d)
+                line = Line(dots=ds, plt={"color":"b", "style":"o--", "label":"Impact of Interest Set"})
+                lines.append(line)
             
-            case3 = Case(id="test-ip-nacktrue", nack="true", consumerClass="CDNIPApp", **dic)
-            case3.isRefresh = True
-            
-            case4 = Case(id="test-ip-nackfalse", nack="false", consumerClass="CDNIPApp", **dic)
-            case4.isRefresh = True
-            
-            AliveCaseCounter += 4
-            case1.start()
-            case2.start()
-            case3.start()
-            case4.start()
-            for case in [case1, case2, case3, case4]: 
-                if case.isAlive():
-                    case.join()
-                    
-            print "test finish"
+            line = Line(dots2, plt=plt)
+            lines2.append(line)
+                
+            line = Line(dots3, plt=plt)
+            lines3.append(line)
+        canvas = {}
+        canvas["xlabel"] = "Interest Set Freqency or Equally Interest Freqency(/32)"
+        #canvas["xlabel"] = "Interest Set Freqency or Equally Interest Freqency(/32)"
+        
+        canvas["loc"] = "upper left"
+        
+        fig = Figure(id="Ist-fwN=freq", lines=lines, canvas=canvas)
+        fig.line()
+        canvas["loc"] = "lower right"
+        canvas["xlabel"] = "Interest Set Freqency or Equally Interest Freqency(/32)"
+        fig = Figure(id="Data-fwN=freq", lines=lines2, canvas=canvas)
+        fig.line()
+        canvas["xlabel"] = "Interest Set Freqency or Equally Interest Freqency(/32)"
+        fig = Figure(id="Consumer-in-Data=freq", lines=lines3, canvas=canvas)
+        fig.line()
+        
+if __name__=="__main__":
+    #cmd = "./waf --run 'shock-test  --ratetrf=shock/output/Case/ist-set.rate'>output/Case/ist-set.output 2>&1"
+    #print os.system(cmd)
+    god = God(paper="name-set")
+    god.setup()
+    god.sayApp()
+    god.sayRate()
+    #god.notify(way="email")
             
             
