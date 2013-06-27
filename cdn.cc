@@ -96,6 +96,7 @@ int main (int argc, char *argv[])
 	LogComponentEnable("ndn.App", LOG_LEVEL_INFO);
 	LogComponentEnable("ndn.Producer", LOG_LEVEL_FUNCTION);
 	LogComponentEnable("InetTopologyReader", LOG_LEVEL_INFO);
+	LogComponentEnable("AnnotatedTopologyReader", LOG_LEVEL_INFO);
 	LogComponentEnable("ndn.fw.Nacks", LOG_LEVEL_DEBUG);
 	//LogComponentEnable("ndn.cs.Lru", LOG_LEVEL_INFO);
 	LogComponentEnable("ndn.GlobalRoutingHelper", LOG_LEVEL_DEBUG);
@@ -104,10 +105,6 @@ int main (int argc, char *argv[])
 	LogComponentEnable("ShockExperiment", LOG_LEVEL_INFO); //all-logic,function, info, debug, warn, error, uncond
 	LogComponentEnable("ndn.fib.Entry", LOG_LEVEL_FUNCTION);
 	LogComponentEnable("ndn.CDNIPApp", LOG_LEVEL_INFO);
-
-
-	std::string format ("Rocketfuel");
-	std::string input ("examples/shock/input/7018.r0-conv-annotated.txt");
 
 	stringstream  settings;
 
@@ -141,28 +138,12 @@ int main (int argc, char *argv[])
   //Config::SetDefault ("ns3::DropTailQueue::MaxPackets", StringValue("5"));
   Config::SetDefault("ns3::ndn::fw::Nacks::EnableNACKs", StringValue(nack));
 
-  Ptr<TopologyReader> inFile = 0;
-  TopologyReaderHelper topoHelp;
-
-  NodeContainer nodes;
-
-  topoHelp.SetFileName (input);
-  topoHelp.SetFileType (format);
-  inFile = topoHelp.GetTopologyReader ();
-
-  if (inFile != 0)
-    {
-      nodes = inFile->Read ();
-    }
-
-  if (inFile->LinksSize () == 0)
-    {
-      NS_LOG_ERROR ("Problems reading the topology file. Failing.");
-      return -1;
-    }
-   int totlinks = inFile->LinksSize ();
-   int totnodes = nodes.GetN();
-
+    AnnotatedTopologyReader topologyReader ("", 1);
+    topologyReader.SetFileName ("examples/shock/input/7018.r0-conv-annotated.txt");
+    topologyReader.Read ();
+    NodeContainer nodes = topologyReader.GetNodes();
+    std::list<Link> links = topologyReader.GetLinks();
+    
    NS_LOG_INFO("NodesSize="<<totnodes<<", LinksSize="<<totlinks);
    settings<<"\nnodesSize="<<totnodes<<" linksSize="<<totlinks;
 
