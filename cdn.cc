@@ -68,14 +68,14 @@ NS_LOG_COMPONENT_DEFINE ("ShockExperiment");
 
 //static std::list<unsigned int> data;
 //typedef ns3::ndn::InterestHeader InterestHeader;
-static void TraceStatus(fib::FaceMetric::Status old, fib::FaceMetric::Status now) {
-	NS_LOG_INFO("- Change Status from "<<old<<" to "<<now);
-}
-
-static void SinkIst(Ptr<const InterestHeader> header, Ptr<App> app, Ptr<Face> face)
-{
-	NS_LOG_INFO("+ Respodning with ContentObject "<< boost::cref(*header));
-}
+//static void TraceStatus(fib::FaceMetric::Status old, fib::FaceMetric::Status now) {
+//	NS_LOG_INFO("- Change Status from "<<old<<" to "<<now);
+//}
+//
+//static void SinkIst(Ptr<const InterestHeader> header, Ptr<App> app, Ptr<Face> face)
+//{
+//	NS_LOG_INFO("+ Respodning with ContentObject "<< boost::cref(*header));
+//}
 //static void SinkRx (const Ptr<const InterestHeader> &interest, Ptr<Packet> packet)
 //{
 //
@@ -106,8 +106,8 @@ int main (int argc, char *argv[])
 	LogComponentEnable("ndn.CDNIPApp", LOG_LEVEL_INFO);
 
 
-	std::string format ("Inet");
-	std::string input ("shock/input/sprint-topology.txt");
+	std::string format ("Rocketfuel");
+	std::string input ("examples/shock/input/7018.r0-conv-annotated.txt");
 
 	stringstream  settings;
 
@@ -115,7 +115,7 @@ int main (int argc, char *argv[])
   int seed = 3;
   double duration =  3.0;
   int producerNum = 2;
-  std::string csSize = "ZERO";
+  std::string csSize = "1";
   std::string consumerClass="ConsumerCbr";//consumerCbr
   std::string nack = "true";
   std::string tracefile = "";
@@ -131,29 +131,6 @@ int main (int argc, char *argv[])
   cmd.AddValue("nack", "enable Nack or not", nack);
   cmd.AddValue("trace", "trace file", tracefile);
   cmd.Parse (argc, argv);
-
-  string ZERO = boost::lexical_cast<string>(std::numeric_limits<uint32_t>::max ());
-  cmd.Parse (argc, argv);
-  if (csSize == "Zero" || csSize == "ZERO" ||csSize=="-1") {
-	  csSize = ZERO;
-	  NS_LOG_INFO("2csSize="<<csSize);
-  }else{
-	  NS_LOG_INFO("csSize="<<csSize);
-  }
-  NS_LOG_INFO("consumerClass"<<consumerClass);
-
-
-  if (tracefile == ""){
-		  if (nack == "true") {
-			  if (consumerClass=="CDNIPApp") {
-				  tracefile = "shock/output/Nack-ip.txt";
-			  } else {
-				  tracefile = "shock/output/Nack-enable.txt";
-			  }
-		  }else  if (nack=="false"){
-			  tracefile = "shock/output/Nack-disable.txt";
-		  }
-  }
 
   settings<<"#seed="<<seed<<" duration="<<duration<<" producerNum="<<producerNum<<" csSize="<<csSize<<" consumerClass="<<consumerClass;
   settings<<" nack="<<nack<<" trace="<<tracefile;
@@ -202,7 +179,7 @@ int main (int argc, char *argv[])
   ndn::StackHelper ccnxHelper;
   ccnxHelper.SetForwardingStrategy ("ns3::ndn::fw::BestRoute::PerOutFaceLimits",
   									  "Limit", "ns3::ndn::Limits::Rate");
-  ccnxHelper.EnableLimits(true, Seconds(0.1), 1100, 50);
+//  ccnxHelper.EnableLimits(true, Seconds(0.1), 1100, 50);
 
 //  ccnxHelper.SetForwardingStrategy ("ns3::ndn::fw::BestRoute");
 //  if (nack == "false") {
