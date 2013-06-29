@@ -87,6 +87,22 @@ NS_LOG_COMPONENT_DEFINE ("ShockExperiment");
 //static void IstRtt(RttEstimator old_rtt, RttEstimator new_rtt){
 //	cout<<old_rtt<<new_rtt<<endl;
 //}
+
+
+
+static void TimeoutRequest(App app, uint32_t seq)
+{
+	cout<<"seq="<<seq<<" is timeout";
+	//NS_LOG_INFO("seq="<<seq<<" is timeout");
+}
+
+static void NackBack(const Ptr<const InterestHeader> &interest, Ptr<Packet> packet)
+{
+
+	uint32_t seq = boost::lexical_cast<uint32_t> (interest->GetName ().GetComponents ().back ());
+	cout<<"seq="<<seq<<" is nack back";
+	//NS_LOG_INFO("seq="<<seq<<" is nack back");
+}
 // ----------------------------------------------------------------------
 // -- main
 // ----------------------------------------------
@@ -96,14 +112,14 @@ int main (int argc, char *argv[])
 	LogComponentEnable("ndn.App", LOG_LEVEL_INFO);
 	LogComponentEnable("ndn.Producer", LOG_LEVEL_FUNCTION);
 	LogComponentEnable("InetTopologyReader", LOG_LEVEL_INFO);
-	LogComponentEnable("AnnotatedTopologyReader", LOG_LEVEL_INFO);
-	LogComponentEnable("ndn.fw.Nacks", LOG_LEVEL_DEBUG);
+	//LogComponentEnable("AnnotatedTopologyReader", LOG_LEVEL_INFO);
+	//LogComponentEnable("ndn.fw.Nacks", LOG_LEVEL_DEBUG);
 	//LogComponentEnable("ndn.cs.Lru", LOG_LEVEL_INFO);
-	LogComponentEnable("ndn.GlobalRoutingHelper", LOG_LEVEL_DEBUG);
-	LogComponentEnable("ndn.ConsumerZipfMandelbrot", LOG_LEVEL_INFO);
-	LogComponentEnable("ndn.Consumer", LOG_LEVEL_INFO);
+	//LogComponentEnable("ndn.GlobalRoutingHelper", LOG_LEVEL_DEBUG);
+	//LogComponentEnable("ndn.ConsumerZipfMandelbrot", LOG_LEVEL_INFO);
+	//LogComponentEnable("ndn.Consumer", LOG_LEVEL_INFO);
 	LogComponentEnable("ShockExperiment", LOG_LEVEL_INFO); //all-logic,function, info, debug, warn, error, uncond
-	LogComponentEnable("ndn.fib.Entry", LOG_LEVEL_FUNCTION);
+	//LogComponentEnable("ndn.fib.Entry", LOG_LEVEL_FUNCTION);
 	LogComponentEnable("ndn.CDNIPApp", LOG_LEVEL_INFO);
 
 	stringstream  settings;
@@ -115,11 +131,9 @@ int main (int argc, char *argv[])
   std::string csSize = "1";
   std::string consumerClass="ConsumerCbr";//consumerCbr
   std::string nack = "true";
-  std::string tracefile = "";
+  std::string tracefile = "trace.txt";
 
   CommandLine cmd;
-  cmd.AddValue ("format", "Format to use for data input [Orbis|Inet|Rocketfuel].", format);
-  cmd.AddValue ("input", "Name of the input file.", input);
   cmd.AddValue("seed", "seed of RNG", seed);
   cmd.AddValue("duration", "simulation time", duration);
   cmd.AddValue("producerNum", "number of producers", producerNum);
@@ -133,7 +147,7 @@ int main (int argc, char *argv[])
   settings<<" nack="<<nack<<" trace="<<tracefile;
 
 
-  Config::SetDefault ("ns3::PointToPointNetDevice::DataRate", StringValue ("1Mbps"));
+  //Config::SetDefault ("ns3::PointToPointNetDevice::DataRate", StringValue ("1Mbps"));
   //Config::SetDefault ("ns3::PointToPointChannel::Delay", StringValue ("10ms"));
   //Config::SetDefault ("ns3::DropTailQueue::MaxPackets", StringValue("5"));
   Config::SetDefault("ns3::ndn::fw::Nacks::EnableNACKs", StringValue(nack));
@@ -141,25 +155,35 @@ int main (int argc, char *argv[])
     AnnotatedTopologyReader topologyReader ("", 1);
     topologyReader.SetFileName ("examples/shock/input/7018.r0-conv-annotated.txt");
     topologyReader.Read ();
+
+
+      NodeContainer leaves;
+      NodeContainer gw;
+      NodeContainer bb;
+
     NodeContainer nodes = topologyReader.GetNodes();
-    std::list<Link> links = topologyReader.GetLinks();
-    
-   NS_LOG_INFO("NodesSize="<<totnodes<<", LinksSize="<<totlinks);
-   settings<<"\nnodesSize="<<totnodes<<" linksSize="<<totlinks;
-
-  //NodeContainer nodes;
-  TopologyReader::ConstLinksIterator iter;
-  int i = 0;
-
-  PointToPointHelper p2p;
-  for ( iter = inFile->LinksBegin (); iter != inFile->LinksEnd (); iter++, i++ )
+    //std::list<Link> links = topologyReader.GetLinks();
+    for (NodeContainer::Iterator node = nodes.Begin (); node != nodes.End (); node++)
     {
-      p2p.Install(iter->GetFromNode(), iter->GetToNode());
-      NS_LOG_LOGIC("p2p link "<<i<<" : from "<<iter->GetFromNode()->GetId()<<" to "<<iter->GetToNode()->GetId());
+    	Ptr<Node> pn = *node;
+
+    	if (Names::FindName (pn).compare (0, 5, "leaf-")==0)
+		  {
+			leaves.Add (pn);
+		  }
+		else if (Names::FindName (pn).compare (0, 3, "gw-")==0)
+		  {
+			gw.Add (pn);
+		  }
+		else if (Names::FindName (pn).compare (0, 3, "bb-")==0)
+		  {
+			bb.Add (pn);
+		  }
     }
   ndn::StackHelper ccnxHelper;
-  ccnxHelper.SetForwardingStrategy ("ns3::ndn::fw::BestRoute::PerOutFaceLimits",
-  									  "Limit", "ns3::ndn::Limits::Rate");
+  ccnxHelper.SetForwardingStrategy ("ns3::ndn::fw::BestRoute");
+
+
 //  ccnxHelper.EnableLimits(true, Seconds(0.1), 1100, 50);
 
 //  ccnxHelper.SetForwardingStrategy ("ns3::ndn::fw::BestRoute");
@@ -170,6 +194,7 @@ int main (int argc, char *argv[])
 //									  "Limit", "ns3::ndn::Limits::Rate");
 //	  ccnxHelper.EnableLimits(true, Seconds(0.1), 1100, 50);
 //  }
+
   ccnxHelper.SetContentStore ("ns3::ndn::cs::Lru", "MaxSize", csSize);
   ccnxHelper.InstallAll ();
 
@@ -178,11 +203,52 @@ int main (int argc, char *argv[])
   ndn::GlobalRoutingHelper ccnxGlobalRoutingHelper;
   ccnxGlobalRoutingHelper.InstallAll ();
 
+  Ptr<Node> producer = Names::Find<Node> ("leaf-4626");
+  NodeContainer consumerNodes;
+
+  //Ptr<CDNConsumer>  app = Create<CDNConsumer>;
+//  Ptr<Node> node = Names::Find<Node>("leaf-12523");
+//
+//  consumerNodes.Add (node);
+  consumerNodes.Add(leaves);
+  //Ptr<Node> consumer = Names::Find<Node>("bb-12454");
+
+  string prefix = "/cdn";
+
+  ndn::AppHelper consumerHelper ("ns3::ndn::CDNConsumer");
+
+  for (NodeContainer::Iterator node = consumerNodes.Begin (); node != consumerNodes.End (); node++)
+     {
+ 	  	Ptr<Node> pn = *node;
+ 	   consumerHelper.SetPrefix (prefix+"/"+Names::FindName(pn));
+ 	   consumerHelper.SetAttribute ("Frequency", StringValue ("100")); // 100 interests a second
+ 	   consumerHelper.Install (pn);
+
+
+       pn->GetApplication(0)->TraceConnectWithoutContext("m_receivedNacks", MakeCallback(&NackBack));
+       pn->GetApplication(0)->TraceConnectWithoutContext("m_timeoutRequest", MakeCallback(&TimeoutRequest));
+     }
+
+  ndn::AppHelper producerHelper ("ns3::ndn::Producer");
+  producerHelper.SetPrefix (prefix);
+  producerHelper.SetAttribute ("PayloadSize", StringValue("1024"));
+  producerHelper.Install (producer);
+
+
+
+
+  topologyReader.ApplyOspfMetric ();
+  ccnxGlobalRoutingHelper.AddOrigins (prefix, producer);
+
+  // Calculate and install FIBs
+  ndn::GlobalRoutingHelper::CalculateRoutes ();
 
   NS_LOG_INFO(settings.str());
 
   NS_LOG_INFO ("Run Simulation.");
   Simulator::Stop(Seconds(duration));
+
+
 
   boost::tuple< boost::shared_ptr<std::ostream>, std::list<Ptr<ndn::AppDelayTracer> > >
   tracers = ndn::AppDelayTracer::InstallAll (tracefile);
