@@ -1,11 +1,14 @@
 import sys
 import threading
 import time
+import subprocess, shlex
 
+cmd = "/waf --run 'cdn --consumerClass=CDNConsumer --freq=130'"
 
-class Se:
-    
-    pass
+p = subprocess.check_output(cmd)
+with open(self.out, 'w') as f:
+    f.write(p)
+    f.close()
 
 def write():
     self = Se()
@@ -31,4 +34,3 @@ def write():
     else:
         pass
         #log.info("sending mail finished")
-write()
