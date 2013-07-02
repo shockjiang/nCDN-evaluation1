@@ -190,8 +190,8 @@ class Stat(Manager):
                     if line == "" or line.startswith("#"):
                         continue
                     if line.startswith("trace") and line.find("timeout") != -1:
-                        unsatisfiedRequest += 1
-                    elif line.startswith("race: Drop Packet"):
+                        unsatisfiedRequestN += 1
+                    elif line.startswith("trace: Drop Packet"):
                         dropedPacketN += 1
                 fin.close()
                 self.data[case.Id] = [unsatisfiedRequestN, dropedPacketN]
@@ -408,22 +408,23 @@ class God(Manager):
         Min_Freq = 100
         Max_Freq = 200
         self.freqs = range(Min_Freq, Max_Freq+10, 10)
-        
-        if DEBUG:
-            self.freqs = [120, 130]
-        
-        self.consumerClasses = ["CDNConsumer"]
-        
-        self.seeds = range(3, 11)
-        self.seeds = [3]
-        
         self.zipfs = [0.99, 0.92, 1.04]
-        self.zipfs = [0.92]
-        
         self.duration = 50
-        self.producerN = [10]
+        self.producerN = [10, 12, 15]
+        self.seeds = range(3, 11)
+        self.consumerClasses = ["CDNConsumer"]
+            
+        if DEBUG:
+            self.freqs = [200]
+            self.consumerClasses = ["CDNConsumer"]
+            self.seeds = [3]
+            self.zipfs = [0.92]
+            self.producerN = [10]
+            self.duration = 2
         
+             
         self.dic = {}
+        
         
         self.dic["freqs"] = self.freqs
         self.dic["consumerClasses"] = self.consumerClasses

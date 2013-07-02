@@ -288,7 +288,7 @@ int main (int argc, char *argv[])
  	  	Ptr<Node> pn = *node;
  	   consumerHelper.SetPrefix (prefix+"/"+Names::FindName(pn));
  	   consumerHelper.SetAttribute ("Frequency", StringValue (freq)); // 100 interests a second
- 	   consumerHelper.SetAttribute ("q", StringValue ("0.7")); // 100 interests a second
+ 	   consumerHelper.SetAttribute ("q", StringValue ("0")); // 100 interests a second
  	  consumerHelper.SetAttribute ("s", StringValue (zipfs)); // 100 interests a second
  	   consumerHelper.SetAttribute ("NumberOfContents", StringValue ("2000")); // 100 interests a second
 
