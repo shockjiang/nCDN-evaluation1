@@ -22,7 +22,7 @@ import signal
 IS_MT = True #Multi Threads Run
 
 IS_REFRESH = True
-#IS_REFRESH = False
+IS_REFRESH = False
 
 OUT = "output"
 
@@ -106,8 +106,17 @@ class Manager:
         keys.sort()
         for k in keys:
             v = dic[k]
-            Id += "-"+str(k)+str(v)
-        return Id[1:]
+            if k == "consumerClass":
+                pass
+            else:
+                Id += "-" + str(k)
+            if isinstance(v, list):
+                Id += str(v[0])+"-"+str(v[-1])
+            else:
+                Id += str(v)
+        if Id.startswith("-"):
+            Id = Id[1:]
+        return Id
     
     def notify(self, way="email", **msg):
         self.t1 = time.time()
@@ -116,7 +125,6 @@ class Manager:
         data = msg.get("data", data)
         
         self.log.info(data)
-        print data
         if way == "print":
             return
         
@@ -157,17 +165,18 @@ class Stat(Manager):
             for line in fin.readlines():
                 line = line.strip()
                 if line.startswith("#"):
-                    cols = line.split()
+                    cols = line[1:].split()
                     if self.headers != cols:
-                        self.log.warn("stat file headers are different: self.headers="+self.headers+" InFileHeaders="+cols)
+                        self.log.warn("stat file headers are different: self.headers="+str(self.headers)+" InFileHeaders="+str(cols))
                     
-                elif line == "":
+                elif line != "":
                     cols = line.split()
                     caseId = cols[0]
                     
                     li = [int(cols[i]) for i in range(1, len(cols))]
                     self.data[caseId] = li
-                
+                    self.log.debug("column:" + line)
+            self.log.info(self.Id+" get data from file")     
               
         else:
             for caseId in self.cases:
@@ -179,25 +188,32 @@ class Stat(Manager):
                     line = line.strip()
                     if line == "" or line.startswith("#"):
                         continue
-                    if line.startswith("trace") and line.contains("timeout"):
+                    if line.startswith("trace") and line.find("timeout") != -1:
                         unsatisfiedRequest += 1
                     elif line.startswith("race: Drop Packet"):
                         dropedPacketN += 1
+                fin.close()
                 self.data[case.Id] = [unsatisfiedRequestN, dropedPacketN]
                 self.log.debug(caseId+": "+str(self.data[case.Id]))
-                
+
             fout = open(self.out, "w")
-            fout.write("#case.Id\tunsatisfiedRequestN\tdropedPacketN")
+            line = ""
+            for header in self.headers:
+                line += "\t" + header
+            line.strip()
+            line = "#" + line+"\n"
+            fout.write(line)
             for caseId in self.data:
                 li = self.data[caseId]
                 line = caseId
                 for col in li:
-                    line = "\t" + str(col)
+                    line += "\t" + str(col)
                 line += "\n"
-                
+                self.log.debug(self.Id+" write data: "+str(line)) 
                 fout.write(line)
             
             fout.close()
+            self.log.info(self.Id+" write data to file")
 
 class Case(Manager, threading.Thread):
     """ run program/simulation case, trace file is printed to self.trace, console msg is printed to self.output
@@ -388,9 +404,11 @@ class God(Manager):
 #         os.chdir(dir)
         self.cases = {}
         self.freqs = [120, 130]
-        self.freqs = [100+10*i for i in range[11]]    
+        Min_Freq = 200
+        Max_Freq = 500
+        self.freqs = range(Min_Freq, Max_Freq, 100)
         self.consumers = ["CDNConsumer"]
-        
+     
         
     def setup(self):
         dic = {}
@@ -411,7 +429,7 @@ class God(Manager):
                 
         self.stat = Stat(Id=self.parseId(dic), cases=self.cases)
         
-        if not self.isRefresh and (not self.stat.isRefresh) and os.path.exists(stat.out):
+        if not self.isRefresh and (not self.stat.isRefresh) and os.path.exists(self.stat.out):
             pass
         else:
             for Id, case in cases.items():
