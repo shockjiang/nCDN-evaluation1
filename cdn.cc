@@ -161,7 +161,7 @@ int main (int argc, char *argv[])
   int producerN = 25;
   int seed = 3;
   std::string tracefile = "trace";
-
+  std::string zipfs = "1.2";
 
 
   CommandLine cmd;
@@ -172,6 +172,7 @@ int main (int argc, char *argv[])
   cmd.AddValue("csSize", "size of CS", csSize);
   cmd.AddValue("nack", "enable Nack or not", nack);
   cmd.AddValue("trace", "trace file", tracefile);
+  cmd.AddValue("zipfs", "S of zipf", zipfs);
   cmd.AddValue("freq", "Interest Freqence of consumer", freq);
   cmd.Parse (argc, argv);
 
@@ -179,7 +180,7 @@ int main (int argc, char *argv[])
   {
 	  tracefile = consumerClass+"-csSize"+csSize+"-duration"+boost::lexical_cast<std::string>(duration)+
 			  "-freq"+freq+"-nack"+nack+"-producerN"+boost::lexical_cast<std::string>(producerN)+
-			  "-seed"+boost::lexical_cast<std::string>(seed);
+			  "-seed"+boost::lexical_cast<std::string>(seed)+"-zipfs"+zipfs;
   }
 
 
@@ -287,7 +288,10 @@ int main (int argc, char *argv[])
  	  	Ptr<Node> pn = *node;
  	   consumerHelper.SetPrefix (prefix+"/"+Names::FindName(pn));
  	   consumerHelper.SetAttribute ("Frequency", StringValue (freq)); // 100 interests a second
- 	  consumerHelper.SetAttribute ("NumberOfContents", StringValue ("2000")); // 100 interests a second
+ 	   consumerHelper.SetAttribute ("q", StringValue ("0.7")); // 100 interests a second
+ 	  consumerHelper.SetAttribute ("s", StringValue (zipfs)); // 100 interests a second
+ 	   consumerHelper.SetAttribute ("NumberOfContents", StringValue ("2000")); // 100 interests a second
+
  	   consumerHelper.Install (pn);
 
 

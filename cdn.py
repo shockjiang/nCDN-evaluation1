@@ -106,7 +106,7 @@ class Manager:
         keys.sort()
         for k in keys:
             v = dic[k]
-            if k == "consumerClass":
+            if k.startswith("consumerClass"):
                 pass
             else:
                 Id += "-" + str(k)
@@ -116,6 +116,7 @@ class Manager:
                 Id += str(v)
         if Id.startswith("-"):
             Id = Id[1:]
+        Id.replace(".", "-")
         return Id
     
     def notify(self, way="email", **msg):
@@ -403,29 +404,56 @@ class God(Manager):
 #         dir = os.path.split(os.path.realpath(__file__))[0]
 #         os.chdir(dir)
         self.cases = {}
-        self.freqs = [120, 130]
-        Min_Freq = 200
-        Max_Freq = 500
-        self.freqs = range(Min_Freq, Max_Freq, 100)
-        self.consumers = ["CDNConsumer"]
-     
+        
+        Min_Freq = 100
+        Max_Freq = 200
+        self.freqs = range(Min_Freq, Max_Freq+10, 10)
+        
+        if DEBUG:
+            self.freqs = [120, 130]
+        
+        self.consumerClasses = ["CDNConsumer"]
+        
+        self.seeds = range(3, 11)
+        self.seeds = [3]
+        
+        self.zipfs = [0.99, 0.92, 1.04]
+        self.zipfs = [0.92]
+        
+        self.duration = 50
+        self.producerN = [10]
+        
+        self.dic = {}
+        
+        self.dic["freqs"] = self.freqs
+        self.dic["consumerClasses"] = self.consumerClasses
+        self.dic["seeds"] = self.seeds
+        self.dic["producerN"] = self.producerN
+        self.dic["zipfs"] = self.zipfs
+        self.dic["duration"] = self.duration
+        
+        
         
     def setup(self):
-        dic = {}
-        dic["freqs"] = self.freqs
-        dic["consumers"] = self.consumers
-        
       
         cases = self.cases
         for freq in self.freqs:
             dic = {}
             dic["freq"] = freq
-            for consumer in self.consumers:
+            for consumer in self.consumerClasses:
                 dic["consumerClass"] = consumer
-                
-                Id = self.parseId(dic)
-                case = Case(Id=Id, param=dic, **dic)
-                cases[Id] = case
+                for seed in self.seeds:
+                    dic["seed"] = seed
+                    for producerN in self.producerN:
+                        dic["producerN"] = producerN
+                        for zipfs in self.zipfs:
+                            dic["zipfs"] = zipfs
+                            
+                            dic["duration"] = self.duration
+
+                            Id = self.parseId(dic)
+                            case = Case(Id=Id, param=dic, **dic)
+                            cases[Id] = case
                 
         self.stat = Stat(Id=self.parseId(dic), cases=self.cases)
         
