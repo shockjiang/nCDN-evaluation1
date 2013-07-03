@@ -265,15 +265,18 @@ class Case(Manager, threading.Thread):
             args = shlex.split(self.cmd)
                 
             p = os.system(self.cmd)
-            Case.SuccessN += 1
-            if p != 0:
+            if p == 0:
+                Case.SuccessN += 1
+                case.result = True
+                self.log.info("- "+ "CMD: "+self.cmd)
+            else:
                 self.log.error(self.cmd+" return error" )
                 if os.path.exists(self.out):
                     os.remove(self.out)
                 Case.FailN += 1
                 case.result = False
-                
-            self.log.info("- "+ "CMD: "+self.cmd)
+                self.log.warn("! "+ "CMD: "+self.cmd)
+            
 #             
 #             try:
 #                 p = subprocess.check_output(args, shell=True)
@@ -425,7 +428,7 @@ class God(Manager):
         self.zipfs = [0.99, 0.92, 1.04]
         self.duration = 50
         self.producerN = [10, 12, 15]
-        self.seeds = range(3, 11)
+        self.seeds = range(3, 8)
         self.multicast = ["false", "true"]
         self.consumerClasses = ["CDNConsumer"]
             
@@ -480,7 +483,7 @@ class God(Manager):
         else:
             for Id, case in cases.items():
                 case.start()
-            self.log.info("Total CaseN="+str(len(case)))
+            self.log.info("Total CaseN="+str(len(cases)))
                 
             for Id, case in cases.items():
                 if case.isAlive():
