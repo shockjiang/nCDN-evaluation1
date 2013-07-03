@@ -107,16 +107,17 @@ class Manager:
         for k in keys:
             v = dic[k]
             if k.startswith("consumerClass"):
-                pass
-            else:
                 Id += "-" + str(k)
-            if isinstance(v, list):
-                Id += str(v[0])+"-"+str(v[-1])
             else:
-                Id += str(v)
+                Id += "-" + str(k)            
+                if isinstance(v, list):
+                    Id += str(v[0])+"-"+str(v[-1])
+                else:
+                    Id += str(v)
+                    
         if Id.startswith("-"):
             Id = Id[1:]
-        Id.replace(".", "-")
+        Id = Id.replace(".", "")
         return Id
     
     def notify(self, way="email", **msg):
@@ -160,16 +161,17 @@ class Stat(Manager):
         
     #### to be overloaded    
     def stat(self):
-        if not self.isRefresh and os.path.exists(self.out):
+        if not self.isRefresh and os.path.exists(self.out):#read data from existing result
             self.log.info(self.out+" is there")
             fin = open(self.out)
             for line in fin.readlines():
                 line = line.strip()
-                if line.startswith("#"):
-                    cols = line[1:].split()
+                if line.startswith("#headers:"):
+                    cols = line[len("#headers:"):].strip().split()
                     if self.headers != cols:
                         self.log.warn("stat file headers are different: self.headers="+str(self.headers)+" InFileHeaders="+str(cols))
-                    
+                elif line.startswith("#command:"):
+                    pass    
                 elif line != "":
                     cols = line.split()
                     caseId = cols[0]
@@ -179,7 +181,7 @@ class Stat(Manager):
                     self.log.debug("column:" + line)
             self.log.info(self.Id+" get data from file")     
               
-        else:
+        else:   #read and stat the case.out 
             for caseId in self.cases:
                 case = self.cases[caseId]
                 unsatisfiedRequestN = 0
@@ -197,12 +199,14 @@ class Stat(Manager):
                 self.data[case.Id] = [unsatisfiedRequestN, dropedPacketN]
                 self.log.debug(caseId+": "+str(self.data[case.Id]))
 
-            fout = open(self.out, "w")
+            fout = open(self.out, "w") #write the data to result file
             line = ""
             for header in self.headers:
                 line += "\t" + header
             line.strip()
-            line = "#" + line+"\n"
+            line = "#headers: " + line+"\n"
+            fout.write(line)
+            line = "#command: " + case.cmd + "\n"
             fout.write(line)
             for caseId in self.data:
                 li = self.data[caseId]
@@ -261,7 +265,7 @@ class Case(Manager, threading.Thread):
                 if os.path.exists(self.out):
                     os.remove(self.out)
                 Case.FailN += 1
-            
+            self.log.info("- "+ "CMD: "+self.cmd)
 #             
 #             try:
 #                 p = subprocess.check_output(args, shell=True)
@@ -407,6 +411,8 @@ class God(Manager):
         
         Min_Freq = 100
         Max_Freq = 200
+        Step = 100
+        self.freqs = range(Min_Freq, Max_Freq+Step, Step)
         self.freqs = range(Min_Freq, Max_Freq+10, 10)
         self.zipfs = [0.99, 0.92, 1.04]
         self.duration = 50
@@ -415,7 +421,7 @@ class God(Manager):
         self.consumerClasses = ["CDNConsumer"]
             
         if DEBUG:
-            self.freqs = [200]
+            self.freqs = [100]
             self.consumerClasses = ["CDNConsumer"]
             self.seeds = [3]
             self.zipfs = [0.92]
@@ -444,7 +450,7 @@ class God(Manager):
             for consumer in self.consumerClasses:
                 dic["consumerClass"] = consumer
                 for seed in self.seeds:
-                    dic["seed"] = seed
+                    dic["RngRun"] = seed
                     for producerN in self.producerN:
                         dic["producerN"] = producerN
                         for zipfs in self.zipfs:

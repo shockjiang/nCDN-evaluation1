@@ -44,7 +44,7 @@
 #include "ns3/ndn-content-object.h"
 #include "ns3/ndnSIM-module.h"
 #include "ns3/ndn-app.h"
-#include "../src/ndnSIM/apps/cdn-ip-app.h"
+#include "../src/ndnSIM/apps/cdn-ip-consumer.h"
 //#include "ns3/ndn-producer.h"
 #include "../src/ndnSIM/apps/ndn-producer.h"
 #include "../src/ndnSIM/model/fib/ndn-fib-entry.h"
@@ -156,16 +156,16 @@ int main (int argc, char *argv[])
    * freq = 160, 16
    * freq = 170
    */
-
+  std::string multicast = "true";
   std::string nack = "true";
   int producerN = 25;
-  int seed = 3;
+  //int seed = 3;
   std::string tracefile = "trace";
   std::string zipfs = "1.2";
 
 
   CommandLine cmd;
-  cmd.AddValue("seed", "seed of RNG", seed);
+  //cmd.AddValue("seed", "seed of RNG", seed);
   cmd.AddValue("duration", "simulation time", duration);
   cmd.AddValue("producerN", "number of producers", producerN);
   cmd.AddValue("consumerClass", "class type of consumer", consumerClass);
@@ -180,11 +180,11 @@ int main (int argc, char *argv[])
   {
 	  tracefile = consumerClass+"-csSize"+csSize+"-duration"+boost::lexical_cast<std::string>(duration)+
 			  "-freq"+freq+"-nack"+nack+"-producerN"+boost::lexical_cast<std::string>(producerN)+
-			  "-seed"+boost::lexical_cast<std::string>(seed)+"-zipfs"+zipfs;
+			  "-zipfs"+zipfs;
   }
 
 
-  settings<<"#seed="<<seed<<" duration="<<duration<<" producerN="<<producerN<<" csSize="<<csSize<<" consumerClass="<<consumerClass;
+  settings<<"#duration="<<duration<<" producerN="<<producerN<<" csSize="<<csSize<<" consumerClass="<<consumerClass;
   settings<<" nack="<<nack<<" trace="<<tracefile;
 
 
@@ -235,7 +235,7 @@ int main (int argc, char *argv[])
     NodeContainer consumerNodes;
 
     UniformVariable rng = UniformVariable();
-    SeedManager::SetSeed (seed);
+    //SeedManager::SetSeed (seed);
 
     uint32_t gwN = gw.GetN();
     int *flag = new int[gwN];
@@ -269,8 +269,8 @@ int main (int argc, char *argv[])
   ndn::StackHelper ccnxHelper;
   ccnxHelper.SetForwardingStrategy ("ns3::ndn::fw::BestRoute");
 
-
-  ccnxHelper.SetContentStore ("ns3::ndn::cs::Lru", "MaxSize", csSize);
+  ccnxHelper.SetContentStore ("ns3::ndn::cs::Nocache");
+  //ccnxHelper.SetContentStore ("ns3::ndn::cs::Lru", "MaxSize", csSize);
   ccnxHelper.InstallAll ();
 
   ndn::GlobalRoutingHelper ccnxGlobalRoutingHelper;
@@ -282,17 +282,23 @@ int main (int argc, char *argv[])
   string prefix = "/cdn";
 
   ndn::AppHelper consumerHelper ("ns3::ndn::"+consumerClass);
+  consumerHelper.SetAttribute ("q", StringValue ("0")); // 100 interests a second
+  consumerHelper.SetAttribute ("s", StringValue (zipfs)); // 100 interests a second
+  consumerHelper.SetAttribute ("NumberOfContents", StringValue ("2000")); // 100 interests a second
+
 
   for (NodeContainer::Iterator node = consumerNodes.Begin (); node != consumerNodes.End (); node++)
      {
+	  	  string aPrefix = prefix;
  	  	Ptr<Node> pn = *node;
- 	   consumerHelper.SetPrefix (prefix+"/"+Names::FindName(pn));
- 	   consumerHelper.SetAttribute ("Frequency", StringValue (freq)); // 100 interests a second
- 	   consumerHelper.SetAttribute ("q", StringValue ("0")); // 100 interests a second
- 	  consumerHelper.SetAttribute ("s", StringValue (zipfs)); // 100 interests a second
- 	   consumerHelper.SetAttribute ("NumberOfContents", StringValue ("2000")); // 100 interests a second
+ 	  	consumerHelper.SetAttribute ("Frequency", StringValue (freq)); // 100 interests a second
 
- 	   consumerHelper.Install (pn);
+ 	  	if (multicast == "true")
+ 	  	{
+ 	  		aPrefix = prefix + "/" + Names::FindName(pn);
+ 	  	}
+		   consumerHelper.SetPrefix (prefix);
+	   consumerHelper.Install (pn);
 
 
        pn->GetApplication(0)->TraceConnectWithoutContext("ReceivedNacks", MakeCallback(&NackBack));
@@ -300,17 +306,29 @@ int main (int argc, char *argv[])
      }
 
   ndn::AppHelper producerHelper ("ns3::ndn::Producer");
-  producerHelper.SetPrefix (prefix);
+
   producerHelper.SetAttribute ("PayloadSize", StringValue("1024"));
-  producerHelper.Install (producerNodes);
+
+  if (consumerClass == "CDNConsumer")
+	{
+	  producerHelper.SetPrefix (prefix);
+	  producerHelper.Install (producerNodes);
+	  ccnxGlobalRoutingHelper.AddOrigins (prefix, producerNodes);
+	} else if (consumerClass == "CDNIPConsuemr"){
+		for (NodeContainer::Iterator node = consumerNodes.Begin(); node != consumerNodes.End(); node ++)
+		{
+			Ptr<Node> pn = *node;
+			string aPrefix = prefix + "/" + Names::FindName(pn);
+			producerHelper.SetPrefix(aPrefix);
+			ccnxGlobalRoutingHelper.AddOrigins (prefix, producerNodes);
+		}
+
+	}
 
 
 
 
   topologyReader.ApplyOspfMetric ();
-  ccnxGlobalRoutingHelper.AddOrigins (prefix, producerNodes);
-
-  // Calculate and install FIBs
   ndn::GlobalRoutingHelper::CalculateRoutes ();
 
   NS_LOG_INFO(settings.str());
@@ -319,18 +337,8 @@ int main (int argc, char *argv[])
   Simulator::Stop(Seconds(duration));
 
 
-
-//  boost::tuple< boost::shared_ptr<std::ostream>, std::list<Ptr<ndn::AppDelayTracer> > >
-//  tracers = ndn::AppDelayTracer::InstallAll (tracefile);
-
-
   Simulator::Run ();
   Simulator::Destroy ();
-
-  //NS_LOG_INFO(settings.str());
   NS_LOG_INFO ("Done.");
-
   return 0;
-
-  // end main
 }
