@@ -137,7 +137,7 @@ class Manager:
         user= "06jxk"
         passwords="jiangxiaoke"
         mailb = ["paper ends", data]
-        mailh = ["From: "+FROM, "To: shock.jiang@gmail.com", "Subject: Paper ends "+str(time.strftime('%Y-%m-%d %H:%M:%S',time.localtime(self.t1)))]
+        mailh = ["From: "+FROM, "To: shock.jiang@gmail.com", "Subject: Paper ends "+str(time.strftime('%Y-%m-%d %H:%M:%S',time.localtime(self.t1)))+" SuccessN="+str(Case.SuccessN)+" FailN="+str(Case.FailN)]
         mailmsg = "\r\n\r\n".join(["\r\n".join(mailh), "\r\n".join(mailb)])
     
         send = SMTP(SMTP_HOST)
@@ -184,18 +184,21 @@ class Stat(Manager):
         else:   #read and stat the case.out 
             for caseId in self.cases:
                 case = self.cases[caseId]
-                unsatisfiedRequestN = 0
-                dropedPacketN = 0
-                fin = open(case.out)
-                for line in fin.readlines():
-                    line = line.strip()
-                    if line == "" or line.startswith("#"):
-                        continue
-                    if line.startswith("trace") and line.find("timeout") != -1:
-                        unsatisfiedRequestN += 1
-                    elif line.startswith("trace: Drop Packet"):
-                        dropedPacketN += 1
-                fin.close()
+                
+                if (case.result == False):
+                    unsatisfiedRequestN = -1
+                    dropedPacketN = -1
+                else:
+                    fin = open(case.out)
+                    for line in fin.readlines():
+                        line = line.strip()
+                        if line == "" or line.startswith("#"):
+                            continue
+                        if line.startswith("trace") and line.find("timeout") != -1:
+                            unsatisfiedRequestN += 1
+                        elif line.startswith("trace: Drop Packet"):
+                            dropedPacketN += 1
+                    fin.close()
                 self.data[case.Id] = [unsatisfiedRequestN, dropedPacketN]
                 self.log.debug(caseId+": "+str(self.data[case.Id]))
 
@@ -233,6 +236,8 @@ class Case(Manager, threading.Thread):
         threading.Thread.__init__(self)
         Manager.__init__(self, Id)
         
+        case.result = None
+        
         self.cmd = "./waf --run \'cdn"
         self.param = param
         
@@ -253,6 +258,7 @@ class Case(Manager, threading.Thread):
         self.log.info("> " +self.Id+" begins")
         if (not self.isRefresh) and os.path.exists(self.out):
             Case.SuccessN += 1
+            case.result = True
             pass
         else:    
             self.log.info("+ "+ "CMD: "+self.cmd)
@@ -265,6 +271,8 @@ class Case(Manager, threading.Thread):
                 if os.path.exists(self.out):
                     os.remove(self.out)
                 Case.FailN += 1
+                case.result = False
+                
             self.log.info("- "+ "CMD: "+self.cmd)
 #             
 #             try:
@@ -472,11 +480,14 @@ class God(Manager):
         else:
             for Id, case in cases.items():
                 case.start()
+            self.log.info("Total CaseN="+str(len(case)))
                 
             for Id, case in cases.items():
                 if case.isAlive():
                     case.join()
-        
+                    
+            self.log.info("Total CaseN="+len(case)+" SuccessN="+str(Case.SuccessN)+" FailN="+str(Case.FailN))
+            
         self.stat.stat()
         
     def create(self):
