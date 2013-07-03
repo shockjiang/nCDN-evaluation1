@@ -184,7 +184,8 @@ class Stat(Manager):
         else:   #read and stat the case.out 
             for caseId in self.cases:
                 case = self.cases[caseId]
-                
+                unsatisfiedRequestN = 0
+                dropedPacketN = 0
                 if (case.result == False):
                     unsatisfiedRequestN = -1
                     dropedPacketN = -1
@@ -258,7 +259,7 @@ class Case(Manager, threading.Thread):
         self.log.info("> " +self.Id+" begins")
         if (not self.isRefresh) and os.path.exists(self.out):
             Case.SuccessN += 1
-            case.result = True
+            self.result = True
             pass
         else:    
             self.log.info("+ "+ "CMD: "+self.cmd)
@@ -267,14 +268,14 @@ class Case(Manager, threading.Thread):
             p = os.system(self.cmd)
             if p == 0:
                 Case.SuccessN += 1
-                case.result = True
+                self.result = True
                 self.log.info("- "+ "CMD: "+self.cmd)
             else:
                 self.log.error(self.cmd+" return error" )
                 if os.path.exists(self.out):
                     os.remove(self.out)
                 Case.FailN += 1
-                case.result = False
+                self.result = False
                 self.log.warn("! "+ "CMD: "+self.cmd)
             
 #             
@@ -489,7 +490,7 @@ class God(Manager):
                 if case.isAlive():
                     case.join()
                     
-            self.log.info("Total CaseN="+len(case)+" SuccessN="+str(Case.SuccessN)+" FailN="+str(Case.FailN))
+            self.log.info("Total CaseN="+str(len(cases))+" SuccessN="+str(Case.SuccessN)+" FailN="+str(Case.FailN))
             
         self.stat.stat()
         
