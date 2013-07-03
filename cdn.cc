@@ -170,6 +170,7 @@ int main (int argc, char *argv[])
   cmd.AddValue("producerN", "number of producers", producerN);
   cmd.AddValue("consumerClass", "class type of consumer", consumerClass);
   cmd.AddValue("csSize", "size of CS", csSize);
+  cmd.AddValue("multicast", "enable Nack or not", multicast);
   cmd.AddValue("nack", "enable Nack or not", nack);
   cmd.AddValue("trace", "trace file", tracefile);
   cmd.AddValue("zipfs", "S of zipf", zipfs);

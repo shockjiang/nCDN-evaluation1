@@ -418,6 +418,7 @@ class God(Manager):
         self.duration = 50
         self.producerN = [10, 12, 15]
         self.seeds = range(3, 11)
+        self.multicast = ["false", "true"]
         self.consumerClasses = ["CDNConsumer"]
             
         if DEBUG:
@@ -453,14 +454,16 @@ class God(Manager):
                     dic["RngRun"] = seed
                     for producerN in self.producerN:
                         dic["producerN"] = producerN
-                        for zipfs in self.zipfs:
-                            dic["zipfs"] = zipfs
-                            
-                            dic["duration"] = self.duration
-
-                            Id = self.parseId(dic)
-                            case = Case(Id=Id, param=dic, **dic)
-                            cases[Id] = case
+                        for multicast in self.multicast:
+                            dic["multicast"] = multicast
+                            for zipfs in self.zipfs:
+                                dic["zipfs"] = zipfs
+                                
+                                dic["duration"] = self.duration
+    
+                                Id = self.parseId(dic)
+                                case = Case(Id=Id, param=dic, **dic)
+                                cases[Id] = case
                 
         self.stat = Stat(Id=self.parseId(dic), cases=self.cases)
         
