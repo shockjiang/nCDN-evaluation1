@@ -236,7 +236,7 @@ class Case(Manager, threading.Thread):
         threading.Thread.__init__(self)
         Manager.__init__(self, Id)
         
-        case.result = None
+        self.result = None
         
         self.cmd = "./waf --run \'cdn"
         self.param = param
