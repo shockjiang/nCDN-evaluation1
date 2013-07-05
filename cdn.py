@@ -507,7 +507,7 @@ class God(Manager):
                                 cases[Id] = case
         
         self.stat = Stat(Id=self.parseId(self.dic), cases=self.cases)
-        self.log.info("Stat: "+self.stat.Id)
+        self.log.info("Stat: "+self.stat.Id+" begin")
         
         if not self.isRefresh and (not self.stat.isRefresh) and os.path.exists(self.stat.out):
             pass
@@ -550,9 +550,13 @@ class God(Manager):
                         case.start()
                         
                         next += 1
-
+                        
+                for case in aliveThds:
+                    if case.isAlive():
+                        case.join()
             
-            self.log.info("Total CaseN="+str(len(cases))+" SuccessN="+str(Case.SuccessN)+" FailN="+str(Case.FailN))
+            self.log.info("Stat: "+self.stat.Id+" begin" + \
+                          "Total CaseN="+str(len(cases))+" SuccessN="+str(Case.SuccessN)+" FailN="+str(Case.FailN))
             
         self.stat.stat()
         
