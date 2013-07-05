@@ -22,7 +22,7 @@ import signal
 IS_MT = True #Multi Threads Run
 
 IS_REFRESH = True
-#IS_REFRESH = False
+IS_REFRESH = False
 
 OUT = "output"
 
@@ -446,9 +446,10 @@ class God(Manager):
         self.freqs = range(Min_Freq, Max_Freq+Step, Step)
         self.freqs = range(Min_Freq, Max_Freq+10, 10)
         self.zipfs = [0.99, 0.92, 1.04]
+        self.zipfs = [0.99]
         self.duration = 50
         self.producerN = [10, 12, 15]
-        self.seeds = range(3, 8)
+        self.seeds = range(3, 4)
         self.multicast = ["false", "true"]
         self.consumerClasses = ["CDNConsumer", "CDNIPConsumer"]
         #self.consumerClasses = ["CDNConsumer"]
