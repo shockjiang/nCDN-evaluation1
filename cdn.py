@@ -24,12 +24,14 @@ IS_MT = True #Multi Threads Run
 IS_REFRESH = True
 IS_REFRESH = False
 
+MAX_THREADN = 100
+
 OUT = "output"
 
 DEBUG = False
 if HOSTOS.startswith("Darwin"):
     DEBUG = True
-
+    MAX_THREADN = 2
 LOG_LEVEL = logging.DEBUG
 
 
@@ -146,7 +148,8 @@ class Manager:
         user= "06jxk"
         passwords="jiangxiaoke"
         mailb = ["paper ends", data]
-        mailh = ["From: "+FROM, "To: shock.jiang@gmail.com", "Subject: Paper ends "+str(time.strftime('%Y-%m-%d %H:%M:%S',time.localtime(self.t1)))+" SuccessN="+str(Case.SuccessN)+" FailN="+str(Case.FailN)]
+        mailh = ["From: "+FROM, "To: shock.jiang@gmail.com", "Subject: Paper ends "+str(time.strftime('%Y-%m-%d %H:%M:%S',time.localtime(self.t1)))+\
+                    "TotalN=" + str(Case.TotalN) +" SuccessN="+str(Case.SuccessN)+" FailN="+str(Case.FailN)]
         mailmsg = "\r\n\r\n".join(["\r\n".join(mailh), "\r\n".join(mailb)])
     
         send = SMTP(SMTP_HOST)
@@ -235,7 +238,7 @@ class Stat(Manager):
                 for col in li:
                     line += "\t" + str(col)
                 line += "\n"
-                self.log.debug(self.Id+" write data: "+str(line)) 
+                self.log.debug("write data: "+str(line)) 
                 fout.write(line)
             
             fout.close()
@@ -246,7 +249,8 @@ class Case(Manager, threading.Thread):
         and self.out is stored the statstical information
         
         self.data
-    """    
+    """
+    TotalN = 0
     LiveN = 0
     SuccessN = 0
     FailN = 0
@@ -274,7 +278,8 @@ class Case(Manager, threading.Thread):
         """ run the case, after running, the statstical result is held in self.data as list
         """
         #Case.LiveN += 1
-        self.log.info("> " +self.Id+" begins")
+        self.log.info("> " +self.Id+" begins TotalN/LiveN/SuccessN/FailN=%d/%d/%d/%d" \
+                      %(Case.TotalN, Case.LiveN, Case.SuccessN, Case.FailN))
         if (not self.isRefresh) and os.path.exists(self.out):
             Case.SuccessN += 1
             self.result = True
@@ -311,7 +316,9 @@ class Case(Manager, threading.Thread):
 #                 Case.FailN += 1
                     
         Case.LiveN -= 1
-        self.log.info("< "+str(self.Id)+" ends. Live Case Nun ="+str(Case.LiveN))
+        self.log.info("< " +self.Id+" ends TotalN/LiveN/SuccessN/FailN=%d/%d/%d/%d" \
+                      %(Case.TotalN, Case.LiveN, Case.SuccessN, Case.FailN))
+        #self.log.info("< "+str(self.Id)+" ends. Live Case Nun ="+str(Case.LiveN))
 
             
 class Dot():        
@@ -446,10 +453,11 @@ class God(Manager):
         self.freqs = range(Min_Freq, Max_Freq+Step, Step)
         self.freqs = range(Min_Freq, Max_Freq+10, 10)
         self.zipfs = [0.99, 0.92, 1.04]
-        self.zipfs = [0.99]
+        #self.zipfs = [0.99]
         self.duration = 50
         self.producerN = [10, 12, 15]
-        self.seeds = range(3, 4)
+        self.seeds = range(3, 9)
+        #self.seeds = range(3, 4)
         self.multicast = ["false", "true"]
         self.consumerClasses = ["CDNConsumer", "CDNIPConsumer"]
         #self.consumerClasses = ["CDNConsumer"]
@@ -457,7 +465,7 @@ class God(Manager):
         if DEBUG:
             self.freqs = [100]
             self.consumerClasses = ["CDNConsumer", "CDNIPConsumer"]
-            self.seeds = [3]
+            self.seeds = [3, 4]
             self.zipfs = [0.92]
             self.producerN = [10]
             self.duration = 2
@@ -504,21 +512,45 @@ class God(Manager):
         if not self.isRefresh and (not self.stat.isRefresh) and os.path.exists(self.stat.out):
             pass
         else:
-            for Id, case in cases.items():
-                case.start()
-            self.log.info("Total CaseN="+str(len(cases)))
-#             
-#             while 1:
-#                 print "test"
-#                 alive = False
-#                 for Id, case in cases.items():
-#                     alive = alive or case.isAlive()
-#                 if not alive:
-#                     break
-                 
-            for Id, case in cases.items():
-                if case.isAlive():
-                    case.join()
+            Case.TotalN = len(cases)
+            keys = cases.keys()
+            if len(keys)<= MAX_THREADN:
+                for Id, case in cases.items():
+                    case.start()
+                    
+                for Id, case in cases.items():
+                    if case.isAlive():
+                        case.join()
+            else:
+                aliveThds = []
+                for j in range(MAX_THREADN):
+                    key = keys[j]
+                    case = cases[key]
+                    aliveThds.append(case)
+                    case.start()
+                    
+                next = MAX_THREADN
+                while next < len(keys):
+                    endN = 0
+                    endThds = []
+                    for case in aliveThds: 
+                        if case.isAlive() == False:
+                            endN += 1
+                            endThds.append(case)
+                    
+                    for case in endThds:
+                        aliveThds.remove(case)
+                            
+                    for i in range(endN):
+                        if next >= len(keys):
+                            break
+                        key = keys[next]
+                        case = cases[key]
+                        aliveThds.append(case)
+                        case.start()
+                        
+                        next += 1
+
             
             self.log.info("Total CaseN="+str(len(cases))+" SuccessN="+str(Case.SuccessN)+" FailN="+str(Case.FailN))
             
