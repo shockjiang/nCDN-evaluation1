@@ -107,7 +107,7 @@ class Manager:
         for k in keys:
             v = dic[k]
             if k.startswith("consumerClass"):
-                Id += "-" + str(k)
+                Id += "-" + str(v)
             else:
                 Id += "-" + str(k)            
                 if isinstance(v, list):
@@ -431,11 +431,12 @@ class God(Manager):
         self.producerN = [10, 12, 15]
         self.seeds = range(3, 8)
         self.multicast = ["false", "true"]
+        self.consumerClasses = ["CDNConsumer", "CDNIPConsumer"]
         self.consumerClasses = ["CDNConsumer"]
             
         if DEBUG:
             self.freqs = [100]
-            self.consumerClasses = ["CDNConsumer"]
+            self.consumerClasses = ["CDNIPConsumer"]
             self.seeds = [3]
             self.zipfs = [0.92]
             self.producerN = [10]

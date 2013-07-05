@@ -3,3 +3,6 @@
 def build(bld):
     obj = bld.create_ns3_program('cdn', ['ndnSIM'])
     obj.source = 'cdn.cc'
+
+    #obj = bld.create_ns3_program('shock', ['ndnSIM'])
+    #obj.source = 'test.cc'

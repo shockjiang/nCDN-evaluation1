@@ -115,9 +115,15 @@ static void TimeoutRequest(Ptr<App> app, uint32_t seq)
 static void NackBack(Ptr<const InterestHeader> interest, Ptr<App> app, Ptr<Face> face)
 {
 	uint32_t seq = boost::lexical_cast<uint32_t> (interest->GetName ().GetComponents ().back ());
-	cout<<"seq="<<seq<<" is nack back";
+	cout<<"trace: seq="<<seq<<" is nack back"<<endl;
 	//NS_LOG_INFO("seq="<<seq<<" is nack back");
 }
+
+static void ChangeProducer(Ptr<App> app, Ptr<ndn::fib::Entry> cur, Ptr<ndn::fib::Entry> nw)
+{
+	cout<<"trace: app="<<app->GetId()<<" change prefix to "<<nw->GetPrefix()<<" from "<<cur->GetPrefix()<<endl;
+}
+
 // ----------------------------------------------------------------------
 // -- main
 // ----------------------------------------------
@@ -138,7 +144,7 @@ int main (int argc, char *argv[])
 	//LogComponentEnable("ndn.Consumer", LOG_LEVEL_FUNCTION);
 	LogComponentEnable("ShockExperiment", LOG_LEVEL_INFO); //all-logic,function, info, debug, warn, error, uncond
 	//LogComponentEnable("ndn.fib.Entry", LOG_LEVEL_FUNCTION);
-	//LogComponentEnable("ndn.CDNIPApp", LOG_LEVEL_INFO);
+	LogComponentEnable("ndn.CDNIPConsumer", LOG_LEVEL_INFO);
 
 	stringstream  settings;
 
@@ -177,16 +183,19 @@ int main (int argc, char *argv[])
   cmd.AddValue("freq", "Interest Freqence of consumer", freq);
   cmd.Parse (argc, argv);
 
+  UniformVariable rng = UniformVariable();
+        //SeedManager::SetSeed (seed);
   if (tracefile.compare("trace") == 0)
   {
 	  tracefile = consumerClass+"-csSize"+csSize+"-duration"+boost::lexical_cast<std::string>(duration)+
 			  "-freq"+freq+"-nack"+nack+"-producerN"+boost::lexical_cast<std::string>(producerN)+
-			  "-zipfs"+zipfs;
+			  "-RngRun"+boost::lexical_cast<std::string>(SeedManager::GetRun())+"-zipfs"+zipfs;
   }
 
 
   settings<<"#duration="<<duration<<" producerN="<<producerN<<" csSize="<<csSize<<" consumerClass="<<consumerClass;
   settings<<" nack="<<nack<<" trace="<<tracefile;
+
 
 
   //Config::SetDefault ("ns3::PointToPointNetDevice::DataRate", StringValue ("1Mbps"));
@@ -235,8 +244,7 @@ int main (int argc, char *argv[])
     NodeContainer producerNodes;
     NodeContainer consumerNodes;
 
-    UniformVariable rng = UniformVariable();
-    //SeedManager::SetSeed (seed);
+
 
     uint32_t gwN = gw.GetN();
     int *flag = new int[gwN];
@@ -286,25 +294,36 @@ int main (int argc, char *argv[])
   consumerHelper.SetAttribute ("q", StringValue ("0")); // 100 interests a second
   consumerHelper.SetAttribute ("s", StringValue (zipfs)); // 100 interests a second
   consumerHelper.SetAttribute ("NumberOfContents", StringValue ("2000")); // 100 interests a second
+  consumerHelper.SetAttribute ("Frequency", StringValue (freq)); // 100 interests a second
 
 
   for (NodeContainer::Iterator node = consumerNodes.Begin (); node != consumerNodes.End (); node++)
      {
 	  	  string aPrefix = prefix;
  	  	Ptr<Node> pn = *node;
- 	  	consumerHelper.SetAttribute ("Frequency", StringValue (freq)); // 100 interests a second
 
  	  	if (multicast == "true")
  	  	{
  	  		aPrefix = prefix + "/" + Names::FindName(pn);
  	  	}
-		   consumerHelper.SetPrefix (prefix);
+		   consumerHelper.SetPrefix (aPrefix);
+
+
+	   if (consumerClass == "CDNIPConsumer")
+	   {
+		   consumerHelper.SetAttribute("EnableMulticast", StringValue(multicast));
+	   }
+
 	   consumerHelper.Install (pn);
 
-
+	   if (consumerClass == "CDNIPConsumer")
+	   	{
+	   		   pn->GetApplication(0)->TraceConnectWithoutContext("ChangeProducer", MakeCallback(&ChangeProducer));
+	   	}
        pn->GetApplication(0)->TraceConnectWithoutContext("ReceivedNacks", MakeCallback(&NackBack));
        pn->GetApplication(0)->TraceConnectWithoutContext("TimeoutRequest", MakeCallback(&TimeoutRequest));
      }
+
 
   ndn::AppHelper producerHelper ("ns3::ndn::Producer");
 
@@ -315,19 +334,17 @@ int main (int argc, char *argv[])
 	  producerHelper.SetPrefix (prefix);
 	  producerHelper.Install (producerNodes);
 	  ccnxGlobalRoutingHelper.AddOrigins (prefix, producerNodes);
-	} else if (consumerClass == "CDNIPConsuemr"){
-		for (NodeContainer::Iterator node = consumerNodes.Begin(); node != consumerNodes.End(); node ++)
+	} else if (consumerClass == "CDNIPConsumer"){
+		for (NodeContainer::Iterator node = producerNodes.Begin(); node != producerNodes.End(); node ++)
 		{
 			Ptr<Node> pn = *node;
 			string aPrefix = prefix + "/" + Names::FindName(pn);
+			NS_LOG_DEBUG("prefix = "<<aPrefix);
 			producerHelper.SetPrefix(aPrefix);
-			ccnxGlobalRoutingHelper.AddOrigins (prefix, producerNodes);
+			ccnxGlobalRoutingHelper.AddOrigins (aPrefix, pn);
 		}
 
 	}
-
-
-
 
   topologyReader.ApplyOspfMetric ();
   ndn::GlobalRoutingHelper::CalculateRoutes ();
@@ -336,6 +353,10 @@ int main (int argc, char *argv[])
 
   NS_LOG_INFO ("Run Simulation.");
   Simulator::Stop(Seconds(duration));
+
+  boost::tuple< boost::shared_ptr<std::ostream>, std::list<Ptr<ndn::AppDelayTracer> > >
+  tracers = ndn::AppDelayTracer::InstallAll ("examples/shock/output/cdn-over-ip/Case/app-"+tracefile+".txt");
+
 
 
   Simulator::Run ();
