@@ -119,9 +119,14 @@ static void NackBack(Ptr<const InterestHeader> interest, Ptr<App> app, Ptr<Face>
 	//NS_LOG_INFO("seq="<<seq<<" is nack back");
 }
 
-static void ChangeProducer(Ptr<App> app, Ptr<ndn::fib::Entry> cur, Ptr<ndn::fib::Entry> nw)
+static void ChangeProducer(Ptr<App> app, Ptr<ndn::fib::Entry> cur, Ptr<ndn::fib::Entry> tmp)
 {
-	cout<<"trace: app="<<app->GetId()<<" change prefix to "<<nw->GetPrefix()<<" from "<<cur->GetPrefix()<<endl;
+	stringstream msg ;
+	if (cur == 0)
+		msg << "trace: app=" <<app->GetId() << " change prefix to " << tmp->GetPrefix() <<" from 0" ;
+	else
+		msg << "trace: app=" <<app->GetId() <<  " change prefix to " << tmp->GetPrefix() << " from " << cur->GetPrefix() ;
+	cout<<msg.str()<<endl;
 }
 
 // ----------------------------------------------------------------------
@@ -152,9 +157,9 @@ int main (int argc, char *argv[])
 
 
   std::string consumerClass="CDNConsumer";//consumerCbr
-  std::string csSize = "10";
+  std::string csSize = "0";
   double duration =  1.5;
-  std::string freq = "170";
+  std::string freq = "100";
   /*
    * freq = 100, perfect
    * freq = 140, 0
@@ -164,39 +169,35 @@ int main (int argc, char *argv[])
    */
   std::string multicast = "true";
   std::string nack = "true";
-  int producerN = 25;
+  int producerN = 2;
   //int seed = 3;
   std::string tracefile = "trace";
   std::string zipfs = "1.2";
 
 
   CommandLine cmd;
-  //cmd.AddValue("seed", "seed of RNG", seed);
-  cmd.AddValue("duration", "simulation time", duration);
-  cmd.AddValue("producerN", "number of producers", producerN);
+
   cmd.AddValue("consumerClass", "class type of consumer", consumerClass);
   cmd.AddValue("csSize", "size of CS", csSize);
+  cmd.AddValue("duration", "simulation time", duration);
+  cmd.AddValue("freq", "Interest Freqence of consumer", freq);
   cmd.AddValue("multicast", "enable Nack or not", multicast);
   cmd.AddValue("nack", "enable Nack or not", nack);
+  cmd.AddValue("producerN", "number of producers", producerN);
+  //cmd.AddValue("RngRun", "seed of RNG", seed);
   cmd.AddValue("trace", "trace file", tracefile);
   cmd.AddValue("zipfs", "S of zipf", zipfs);
-  cmd.AddValue("freq", "Interest Freqence of consumer", freq);
+
   cmd.Parse (argc, argv);
 
   UniformVariable rng = UniformVariable();
         //SeedManager::SetSeed (seed);
-  if (tracefile.compare("trace") == 0)
+  if (tracefile == "trace")
   {
 	  tracefile = consumerClass+"-csSize"+csSize+"-duration"+boost::lexical_cast<std::string>(duration)+
-			  "-freq"+freq+"-nack"+nack+"-producerN"+boost::lexical_cast<std::string>(producerN)+
+			  "-freq"+freq+"-multicast"+multicast+"-nack"+nack+"-producerN"+boost::lexical_cast<std::string>(producerN)+
 			  "-RngRun"+boost::lexical_cast<std::string>(SeedManager::GetRun())+"-zipfs"+zipfs;
   }
-
-
-  settings<<"#duration="<<duration<<" producerN="<<producerN<<" csSize="<<csSize<<" consumerClass="<<consumerClass;
-  settings<<" nack="<<nack<<" trace="<<tracefile;
-
-
 
   //Config::SetDefault ("ns3::PointToPointNetDevice::DataRate", StringValue ("1Mbps"));
   //Config::SetDefault ("ns3::PointToPointChannel::Delay", StringValue ("10ms"));
@@ -204,8 +205,9 @@ int main (int argc, char *argv[])
   Config::SetDefault("ns3::ndn::fw::Nacks::EnableNACKs", StringValue(nack));
 
 
-    AnnotatedTopologyReader topologyReader ("", 1);
+    AnnotatedTopologyReader topologyReader ("", 10);
     topologyReader.SetFileName ("examples/shock/input/7018.r0-conv-annotated.txt");
+    //topologyReader.SetFileName ("examples/shock/input/topo-6-node.txt");
     topologyReader.Read ();
 
 
@@ -276,10 +278,14 @@ int main (int argc, char *argv[])
     }
 
   ndn::StackHelper ccnxHelper;
-  ccnxHelper.SetForwardingStrategy ("ns3::ndn::fw::BestRoute");
+  ccnxHelper.SetForwardingStrategy ("ns3::ndn::fw::SmartFlooding");
 
-  ccnxHelper.SetContentStore ("ns3::ndn::cs::Nocache");
-  //ccnxHelper.SetContentStore ("ns3::ndn::cs::Lru", "MaxSize", csSize);
+  if (csSize == "0")
+	  ccnxHelper.SetContentStore ("ns3::ndn::cs::Nocache");
+  else
+  {
+	  ccnxHelper.SetContentStore ("ns3::ndn::cs::Lru", "MaxSize", csSize);
+  }
   ccnxHelper.InstallAll ();
 
   ndn::GlobalRoutingHelper ccnxGlobalRoutingHelper;
@@ -302,7 +308,7 @@ int main (int argc, char *argv[])
 	  	  string aPrefix = prefix;
  	  	Ptr<Node> pn = *node;
 
- 	  	if (multicast == "true")
+ 	  	if (multicast == "false")
  	  	{
  	  		aPrefix = prefix + "/" + Names::FindName(pn);
  	  	}
@@ -349,7 +355,7 @@ int main (int argc, char *argv[])
   topologyReader.ApplyOspfMetric ();
   ndn::GlobalRoutingHelper::CalculateRoutes ();
 
-  NS_LOG_INFO(settings.str());
+  NS_LOG_INFO(tracefile);
 
   NS_LOG_INFO ("Run Simulation.");
   Simulator::Stop(Seconds(duration));

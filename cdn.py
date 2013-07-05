@@ -22,7 +22,7 @@ import signal
 IS_MT = True #Multi Threads Run
 
 IS_REFRESH = True
-IS_REFRESH = False
+#IS_REFRESH = False
 
 OUT = "output"
 
@@ -77,7 +77,7 @@ class Manager:
     """ Super Class of all the manager class, name as an example, Case, Dot, Line, Figure and Paper"""
     def __init__(self, Id, **kwargs):
         self.Id = Id
-        self.daemon = True
+        #self.daemon = True
         self.isMT = IS_MT
         self.isRefresh = IS_REFRESH
         self.t0 = time.time()
@@ -107,11 +107,20 @@ class Manager:
         for k in keys:
             v = dic[k]
             if k.startswith("consumerClass"):
-                Id += "-" + str(v)
+                if isinstance(v, list):
+                    if len(v) >1:
+                        Id += "-"+str(v[0])+"-"+str(v[-1])
+                    else:
+                        Id += "-" + str(v[0])
+                else:
+                    Id += "-"+str(v)
             else:
                 Id += "-" + str(k)            
                 if isinstance(v, list):
-                    Id += str(v[0])+"-"+str(v[-1])
+                    if len(v) >1:
+                        Id += str(v[0])+"-"+str(v[-1])
+                    else:
+                        Id += str(v[0])
                 else:
                     Id += str(v)
                     
@@ -155,7 +164,7 @@ class Stat(Manager):
     def __init__(self, Id, cases):
         Manager.__init__(self, Id)
         self.cases = cases
-        self.headers = ["caseId", "unsatisfiedRequestN", "dropedPacketN"]
+        self.headers = ["caseId", "unsatisfiedRequestN", "dropedPacketN", "nackedPacketN"]
         self.data = {}  #data keyed by case.Id        
         
         
@@ -181,14 +190,18 @@ class Stat(Manager):
                     self.log.debug("column:" + line)
             self.log.info(self.Id+" get data from file")     
               
-        else:   #read and stat the case.out 
+        else:   #read and stat the case.out
+            self.log.info("headers: "+ str(self.headers)) 
             for caseId in self.cases:
                 case = self.cases[caseId]
                 unsatisfiedRequestN = 0
                 dropedPacketN = 0
+                nackedPacketN = 0
+                
                 if (case.result == False):
                     unsatisfiedRequestN = -1
                     dropedPacketN = -1
+                    nackedPacket = -1
                 else:
                     fin = open(case.out)
                     for line in fin.readlines():
@@ -199,8 +212,12 @@ class Stat(Manager):
                             unsatisfiedRequestN += 1
                         elif line.startswith("trace: Drop Packet"):
                             dropedPacketN += 1
+                        elif line.startswith("trace") and line.endswith("nack back"):
+                            nackedPacketN += 1
                     fin.close()
-                self.data[case.Id] = [unsatisfiedRequestN, dropedPacketN]
+                
+                self.data[case.Id] = [unsatisfiedRequestN, dropedPacketN, nackedPacketN]
+                
                 self.log.debug(caseId+": "+str(self.data[case.Id]))
 
             fout = open(self.out, "w") #write the data to result file
@@ -237,6 +254,7 @@ class Case(Manager, threading.Thread):
         threading.Thread.__init__(self)
         Manager.__init__(self, Id)
         
+        self.setDaemon(True)
         self.result = None
         
         self.cmd = "./waf --run \'cdn"
@@ -412,10 +430,11 @@ class God(Manager):
         """ God will run all the cases needed
         
         """
-        Manager.__init__(self, Id="GOD")
+        
         self.t0 = time.time()
         global OUT
         OUT = os.path.join(OUT, paper)
+        Manager.__init__(self, Id="GOD")
         
 #         dir = os.path.split(os.path.realpath(__file__))[0]
 #         os.chdir(dir)
@@ -432,11 +451,11 @@ class God(Manager):
         self.seeds = range(3, 8)
         self.multicast = ["false", "true"]
         self.consumerClasses = ["CDNConsumer", "CDNIPConsumer"]
-        self.consumerClasses = ["CDNConsumer"]
+        #self.consumerClasses = ["CDNConsumer"]
             
         if DEBUG:
             self.freqs = [100]
-            self.consumerClasses = ["CDNIPConsumer"]
+            self.consumerClasses = ["CDNConsumer", "CDNIPConsumer"]
             self.seeds = [3]
             self.zipfs = [0.92]
             self.producerN = [10]
@@ -448,11 +467,11 @@ class God(Manager):
         
         self.dic["freqs"] = self.freqs
         self.dic["consumerClasses"] = self.consumerClasses
-        self.dic["seeds"] = self.seeds
+        self.dic["RngRun"] = self.seeds
         self.dic["producerN"] = self.producerN
+        self.dic["multicast"] = self.multicast
         self.dic["zipfs"] = self.zipfs
         self.dic["duration"] = self.duration
-        
         
         
     def setup(self):
@@ -477,8 +496,9 @@ class God(Manager):
                                 Id = self.parseId(dic)
                                 case = Case(Id=Id, param=dic, **dic)
                                 cases[Id] = case
-                
-        self.stat = Stat(Id=self.parseId(dic), cases=self.cases)
+        
+        self.stat = Stat(Id=self.parseId(self.dic), cases=self.cases)
+        self.log.info("Stat: "+self.stat.Id)
         
         if not self.isRefresh and (not self.stat.isRefresh) and os.path.exists(self.stat.out):
             pass
@@ -486,11 +506,19 @@ class God(Manager):
             for Id, case in cases.items():
                 case.start()
             self.log.info("Total CaseN="+str(len(cases)))
-                
+#             
+#             while 1:
+#                 print "test"
+#                 alive = False
+#                 for Id, case in cases.items():
+#                     alive = alive or case.isAlive()
+#                 if not alive:
+#                     break
+                 
             for Id, case in cases.items():
                 if case.isAlive():
                     case.join()
-                    
+            
             self.log.info("Total CaseN="+str(len(cases))+" SuccessN="+str(Case.SuccessN)+" FailN="+str(Case.FailN))
             
         self.stat.stat()
@@ -499,14 +527,31 @@ class God(Manager):
         pass
         
 def stop():
+    print "-------------- Kill Python ------------"
     os.system("pkill Python")
-    
+
+
+
+
 if __name__=="__main__":
     #cmd = "./waf --run 'shock-test  --ratetrf=shock/output/Case/ist-set.rate'>output/Case/ist-set.output 2>&1"
     #print os.system(cmd)
+    #global DEBUG
+    
+    signal.signal(signal.SIGINT,stop)
+    signal.signal(signal.SIGTERM, stop)
+    
+        
+    for i in range(1, len(sys.argv)):
+        av = sys.argv[i]
+        if av == "--debug":
+            DEBUG = True
+        elif av == "--nodebug":
+            DEBUG = False
+            
     god = God(paper="cdn-over-ip")
     god.setup()
     god.create()
     if not DEBUG:
         god.notify(way="email")
-    signal.signal(signal.SIGINT,stop)         
+    
