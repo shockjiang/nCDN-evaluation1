@@ -366,10 +366,12 @@ int main (int argc, char *argv[])
 
   NS_LOG_INFO ("Run Simulation.");
   Simulator::Stop(Seconds(duration));
-
-  boost::tuple< boost::shared_ptr<std::ostream>, std::list<Ptr<ndn::AppDelayTracer> > >
-  tracers = ndn::AppDelayTracer::InstallAll ("examples/shock/output/cdn-over-ip/Case/app-"+tracefile+".txt");
-
+    
+    if (debug == "true") 
+    {
+        boost::tuple< boost::shared_ptr<std::ostream>, std::list<Ptr<ndn::AppDelayTracer> > >
+        tracers = ndn::AppDelayTracer::InstallAll ("examples/shock/output/cdn-over-ip/Case/app-"+tracefile+".txt");
+    }
 
 
   Simulator::Run ();

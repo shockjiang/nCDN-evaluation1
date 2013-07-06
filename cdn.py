@@ -22,7 +22,7 @@ import signal
 IS_MT = True #Multi Threads Run
 
 IS_REFRESH = True
-#IS_REFRESH = False
+IS_REFRESH = False
 
 MAX_THREADN = 100
 
