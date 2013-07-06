@@ -22,7 +22,7 @@ import signal
 IS_MT = True #Multi Threads Run
 
 IS_REFRESH = True
-IS_REFRESH = False
+#IS_REFRESH = False
 
 MAX_THREADN = 100
 
@@ -464,8 +464,8 @@ class God(Manager):
             
         if DEBUG:
             self.freqs = [100]
-            self.consumerClasses = ["CDNConsumer", "CDNIPConsumer"]
-            self.seeds = [3, 4]
+            self.consumerClasses = ["CDNIPConsumer", "CDNConsumer"]
+            self.seeds = [3]
             self.zipfs = [0.92]
             self.producerN = [10]
             self.duration = 2

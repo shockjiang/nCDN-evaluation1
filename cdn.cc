@@ -158,6 +158,7 @@ int main (int argc, char *argv[])
 
   std::string consumerClass="CDNConsumer";//consumerCbr
   std::string csSize = "0";
+  std::string debug = "false";
   double duration =  1.5;
   std::string freq = "100";
   /*
@@ -179,6 +180,7 @@ int main (int argc, char *argv[])
 
   cmd.AddValue("consumerClass", "class type of consumer", consumerClass);
   cmd.AddValue("csSize", "size of CS", csSize);
+  cmd.AddValue("debug", "simulation time", debug);
   cmd.AddValue("duration", "simulation time", duration);
   cmd.AddValue("freq", "Interest Freqence of consumer", freq);
   cmd.AddValue("multicast", "enable Nack or not", multicast);
@@ -206,9 +208,13 @@ int main (int argc, char *argv[])
 
 
     AnnotatedTopologyReader topologyReader ("", 10);
+
     topologyReader.SetFileName ("examples/shock/input/7018.r0-conv-annotated.txt");
-    //topologyReader.SetFileName ("examples/shock/input/topo-6-node.txt");
-    topologyReader.Read ();
+    if (debug == "true")
+    {
+    topologyReader.SetFileName ("examples/shock/input/topo-6-node.txt");
+    }
+    	topologyReader.Read ();
 
 
       NodeContainer leaves;
@@ -347,6 +353,7 @@ int main (int argc, char *argv[])
 			string aPrefix = prefix + "/" + Names::FindName(pn);
 			NS_LOG_DEBUG("prefix = "<<aPrefix);
 			producerHelper.SetPrefix(aPrefix);
+			producerHelper.Install(pn);
 			ccnxGlobalRoutingHelper.AddOrigins (aPrefix, pn);
 		}
 
