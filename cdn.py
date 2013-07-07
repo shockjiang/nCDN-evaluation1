@@ -173,6 +173,8 @@ class Stat(Manager):
         
     #### to be overloaded    
     def stat(self):
+        self.log.info("> Stat: "+self.Id+" begins")
+            
         if not self.isRefresh and os.path.exists(self.out):#read data from existing result
             self.log.info(self.out+" is there")
             fin = open(self.out)
@@ -243,7 +245,8 @@ class Stat(Manager):
             
             fout.close()
             self.log.info(self.Id+" write data to file")
-
+        self.log.info("< Stat: "+self.Id+" ends")
+        
 class Case(Manager, threading.Thread):
     """ run program/simulation case, trace file is printed to self.trace, console msg is printed to self.output
         and self.out is stored the statstical information
@@ -484,7 +487,7 @@ class God(Manager):
         
         
     def setup(self):
-      
+        self.log.info("> "+ self.Id + " setup begins")
         cases = self.cases
         for freq in self.freqs:
             dic = {}
@@ -507,7 +510,7 @@ class God(Manager):
                                 cases[Id] = case
         
         self.stat = Stat(Id=self.parseId(self.dic), cases=self.cases)
-        self.log.info("Stat: "+self.stat.Id+" begin")
+        #self.log.info("Stat: "+self.stat.Id+" begin")
         
         if not self.isRefresh and (not self.stat.isRefresh) and os.path.exists(self.stat.out):
             pass
@@ -554,11 +557,10 @@ class God(Manager):
                 for case in aliveThds:
                     if case.isAlive():
                         case.join()
-            
-            self.log.info("Stat: "+self.stat.Id+" begin" + \
-                          "Total CaseN="+str(len(cases))+" SuccessN="+str(Case.SuccessN)+" FailN="+str(Case.FailN))
-            
+        
         self.stat.stat()
+        self.log.info("< "+ self.Id + " setup ends " +\
+                      "TotalN="+str(len(cases))+" SuccessN="+str(Case.SuccessN)+" FailN="+str(Case.FailN))
         
     def create(self):
         pass
@@ -587,8 +589,14 @@ if __name__=="__main__":
             DEBUG = False
             
     god = God(paper="cdn-over-ip")
-    god.setup()
-    god.create()
-    if not DEBUG:
-        god.notify(way="email")
     
+    try:    
+        god.setup()
+    except IOError as e:
+        self.log.error("I/O error({0}): {1}".format(e.errno, e.strerror))
+    else:
+        god.create()
+    finally:
+        if not DEBUG:
+            god.notify(way="email")
+
