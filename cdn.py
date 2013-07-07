@@ -1,4 +1,3 @@
-#! /usr/bin/python2.7
 import sys
 import platform
 """the platform of the system"""
@@ -32,6 +31,8 @@ DEBUG = False
 if HOSTOS.startswith("Darwin"):
     DEBUG = True
     MAX_THREADN = 2
+DEBUG = False
+
 LOG_LEVEL = logging.DEBUG
 
 
@@ -164,13 +165,22 @@ class Manager:
     
     
 class Stat(Manager):
-    def __init__(self, Id, cases):
+    def __init__(self, Id, cases, headers=["caseId", "unsatisfiedRequestN", "dropedPacketN", "nackedPacketN"]):
         Manager.__init__(self, Id)
         self.cases = cases
-        self.headers = ["caseId", "unsatisfiedRequestN", "dropedPacketN", "nackedPacketN"]
+        self.headers = headers
         self.data = {}  #data keyed by case.Id        
-        
-        
+    
+    def get(self, caseId, key):
+        if not caseId in self.data:
+            self.log.warn(caseId+" is not in the caseId set")
+            return -2
+        if not key in self.headers:
+            self.log.warn(key + "is not in the headers")
+            return -2
+        index = self.headers.index(key) - 1
+        return self.data[caseId][index]
+    
     #### to be overloaded    
     def stat(self):
         self.log.info("> Stat: "+self.Id+" begins")
@@ -343,7 +353,7 @@ class Figure(Manager):
         such as title, xlabel, ylabel, etc
     """
     def __init__(self, Id, lines, canvas={}, **kwargs):
-        Manager.__init__(self, Id, outType=".pdf")
+        Manager.__init__(self, Id, outType=".png")
         self.detail = os.path.join(OUT, self.__class__.__name__, self.Id+".dat")
         self.lines = lines
         self.canvas = canvas   
@@ -366,7 +376,7 @@ class Figure(Manager):
         plt.legend(**self.canvas)
         
         
-        plt.grId(True)
+        plt.grid(True)
 
         self.log.debug(self.Id+" fig save to "+self.out) 
         plt.savefig(self.out)
@@ -458,7 +468,7 @@ class God(Manager):
         self.zipfs = [0.99, 0.92, 1.04]
         #self.zipfs = [0.99]
         self.duration = 50
-        self.producerN = [10, 12, 15]
+        self.producerN = [10, 12, 15, 18, 20]
         self.seeds = range(3, 9)
         #self.seeds = range(3, 4)
         self.multicast = ["false", "true"]
@@ -563,7 +573,82 @@ class God(Manager):
                       "TotalN="+str(len(cases))+" SuccessN="+str(Case.SuccessN)+" FailN="+str(Case.FailN))
         
     def create(self):
-        pass
+#         scalability: x-producerN, y-unsatisfiedRequest
+#         QoS
+#         bandwidth
+#         latency
+#         loss
+        freqs = [100]
+        consumerClass = self.consumerClasses
+        seeds = [3]
+        producerN = [10]
+        multicast = self.multicast
+        zipfs = [0.92]
+        duration = [50]
+        
+        #scalabiltiy
+        dic = {}
+        dic["freq"] = 100
+        dic["RngRun"] = 3
+        dic["producerN"] = 10
+        dic["zipfs"] = 0.92
+        dic["duration"] = 50
+        
+
+        lines = []
+        for multicast in self.multicast:
+            dic["multicast"] = multicast
+            for consumerClass in self.consumerClasses: 
+                dic["consumerClass"] = consumerClass
+                dots = []
+                
+                if multicast == "false" and consumerClass == "CDNConsumer":
+                    continue
+                
+                for producerN in self.producerN:
+                    dic["producerN"] = producerN
+                    Id = self.parseId(dic)
+                    dot = Dot(x=producerN, y=self.stat.get(Id, "unsatisfiedRequestN"))
+                    dots.append(dot)
+                
+                if consumerClass == "CDNConsumer":
+                   label = "NDN"
+                else:
+                    label = "IP"
+                    if multicast == "true":
+                        label += " with Multicast"
+                
+                plt = {}
+                plt["label"] = label
+                #plt={"color":"b", "style":"o--", "label":"Impact of Interest Set"}
+                line = Line(dots = dots, plt=plt)
+                lines.append(line)
+        canvas = {}
+        canvas["xlabel"] = "# of Producer"
+        canvas["ylabel"] = "# of Unsatisfied Requests"
+        #canvas[]
+        fig = Figure(Id="scalability", lines = lines, canvas=canvas)
+        fig.line()
+#         for freq in self.freqs:
+#             dic = {}
+#             dic["freq"] = freq
+#             for consumer in self.consumerClasses:
+#                 dic["consumerClass"] = consumer
+#                 for seed in self.seeds:
+#                     dic["RngRun"] = seed
+#                     for producerN in self.producerN:
+#                         dic["producerN"] = producerN
+#                         for multicast in self.multicast:
+#                             dic["multicast"] = multicast
+#                             for zipfs in self.zipfs:
+#                                 dic["zipfs"] = zipfs
+#                                 
+#                                 dic["duration"] = self.duration
+#     
+#                                 Id = self.parseId(dic)
+#                                 case = Case(Id=Id, param=dic, **dic)
+#                                 cases[Id] = case
+    
         
 def stop():
     print "-------------- Kill Python ------------"
@@ -597,6 +682,6 @@ if __name__=="__main__":
     else:
         god.create()
     finally:
-        if not DEBUG:
+        if (not DEBUG) and (not HOSTOS.startswith("Darwin")):
             god.notify(way="email")
 
