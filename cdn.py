@@ -468,12 +468,12 @@ class God(Manager):
         Step = 10
         self.freqs = range(Min_Freq, Max_Freq+Step, Step)
         self.zipfs = [0.99, 0.92, 1.04]
-        #self.zipfs = [0.99]
+        self.zipfs = [0.99]
         self.duration = 50
         self.producerN = [10, 12, 15, 18, 20]
-        #self.producerN = [10, 12, 15]
+        self.producerN = [10, 12, 15]
         self.seeds = range(3, 9)
-        #self.seeds = range(3, 4)
+        self.seeds = [3]
         self.multicast = ["false", "true"]
         self.consumerClasses = ["CDNConsumer", "CDNIPConsumer"]
         #self.consumerClasses = ["CDNConsumer"]
@@ -598,7 +598,7 @@ class God(Manager):
                         dic["freq"] = freq
                 
                         Id = self.parseId(dic)    
-                        tt = self.stat.get(Id, "unsatisfiedRequestN")
+                        tt = self.stat.get(Id, "unsatisfiedRequestN") + self.stat.get(Id, "nackedPacketN")
                         if tt < 10:
                             y = freq
                             break
@@ -623,7 +623,7 @@ class God(Manager):
         canvas["xlabel"] = "# of Producer"
         canvas["ylabel"] = "# of Unsatisfied Requests"
         #canvas[]
-        fig = Figure(Id="scalability-seed"+str(dic["RngRun"])+"-zipf"+str(dic["zipfs"]), lines = lines, canvas=canvas)
+        fig = Figure(Id="scalability-RngRun"+str(dic["RngRun"])+"-zipf"+str(dic["zipfs"]), lines = lines, canvas=canvas)
         fig.line()
         
 #         dic["freq"] = 100

@@ -267,22 +267,42 @@ int main (int argc, char *argv[])
     oss << "/NodeList/*/DeviceList/*/$ns3::PointToPointNetDevice/TxQueue/Drop";
     //Config::Connect (oss.str (), MakeBoundCallback (&AsciiTraceHelper::DefaultDequeueSinkWithContext, stream));
     Config::ConnectWithoutContext(oss.str(), MakeCallback(&P2PDropPacket));
-    for (int i =0; i<producerN; i++)
+    string choices[] = {"gw-13041","gw-12505","gw-13130","gw-13134","gw-12669","gw-12550","gw-13035",
+     "gw-12691","gw-12658","gw-12679","gw-12610","gw-12848","gw-12633","gw-12692",
+     "gw-13117","gw-12660","gw-12549","gw-12501","gw-12546","gw-12502","gw-12909",
+     "gw-13129","gw-12910","gw-12585","gw-12838","gw-13045","gw-12779","gw-12487","gw-13114","gw-13000"};
+
+
+    if (debug == "true")
     {
-    	int j = rng.GetInteger(0, gwN-1); //[0, totnodes-1]
-    	Ptr<Node> pn = gw.Get(j);
+		stringstream pros;
+		pros<<"producers: ";
+		for (int i =0; i<producerN; i++)
+		{
+			int j = rng.GetInteger(0, gwN-1); //[0, totnodes-1]
+			Ptr<Node> pn = gw.Get(j);
 
 
-    	if (flag[j] == 0)
+			if (flag[j] == 0)
+			{
+				flag[j] = 1;
+				producerNodes.Add(pn);
+				pros<<"\""<<Names::FindName(pn)<<"\",";
+			} else {
+				i--;
+			}
+
+		}
+
+    cout<<pros.str()<<endl;
+    } else
+    {
+    	for (int i=0; i<producerN; i++)
     	{
-    		flag[j] = 1;
+    		Ptr<Node> pn = Names::Find<Node> (choices[i]);
     		producerNodes.Add(pn);
-    	} else {
-    		i--;
     	}
-
     }
-
   ndn::StackHelper ccnxHelper;
   ccnxHelper.SetForwardingStrategy ("ns3::ndn::fw::SmartFlooding");
 
