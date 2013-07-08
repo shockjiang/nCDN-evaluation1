@@ -469,8 +469,9 @@ class God(Manager):
         self.freqs = range(Min_Freq, Max_Freq+Step, Step)
         self.zipfs = [0.99, 0.92, 1.04]
         self.zipfs = [0.99]
-        self.duration = 50
+        self.duration = 600
         self.producerN = [5, 10, 12, 15, 18, 20, 25, 30]
+        self.producerN = [5, 10, 12, 15, 20, 25, 30]
         #self.producerN = [10, 12, 15]
         self.seeds = range(3, 9)
         self.seeds = [3]

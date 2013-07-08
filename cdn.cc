@@ -58,7 +58,7 @@
 #include <list>
 #include <ns3/ndnSIM/utils/tracers/ndn-app-delay-tracer.h>
 #include <vector>
-
+#include <map>
 
 
 using namespace std;
@@ -100,6 +100,8 @@ NS_LOG_COMPONENT_DEFINE ("ShockExperiment");
 //	cout<<"Drop Packet: channel="<<chid<<" pkt="<<pkt;
 //}
 		 //TracedCallback<Ptr<const Packet> > m_macRxDropTrace;
+
+//bb-12593	bb-12842	98748738bps	1	5628us	2806
 static void P2PDropPacket(Ptr<const Packet> pkt )
 {
 	cout<<"trace: Drop Packet: pkt="<<pkt<<endl;
@@ -128,6 +130,29 @@ static void ChangeProducer(Ptr<App> app, Ptr<ndn::fib::Entry> cur, Ptr<ndn::fib:
 		msg << "trace: app=" <<app->GetId() <<  " change prefix to " << tmp->GetPrefix() << " from " << cur->GetPrefix() ;
 	cout<<msg.str()<<endl;
 }
+
+static map<string, uint32_t> producerReceivedInterestN;
+static void ProducerOnInterest(Ptr<const Interest> interest, Ptr<App> app, Ptr<Face> face)
+{
+	Ptr<Node> pn = app->GetNode();
+	string name = Names::FindName(pn);
+	map<string, uint32_t>::iterator it;
+	it = producerReceivedInterestN.find(name);
+	if (it == producerReceivedInterestN.end())
+	{
+		producerReceivedInterestN[name] = 1;
+	} else
+	{
+		producerReceivedInterestN[name] += 1;
+	}
+}
+//
+//
+//static uint32_t linkReceivedInterestN = 0;
+//static void LinkOnPacket(Ptr<const Packet> pkt)
+//{
+//	linkReceivedInterestN += 1;
+//}
 
 // ----------------------------------------------------------------------
 // -- main
@@ -267,6 +292,11 @@ int main (int argc, char *argv[])
     oss << "/NodeList/*/DeviceList/*/$ns3::PointToPointNetDevice/TxQueue/Drop";
     //Config::Connect (oss.str (), MakeBoundCallback (&AsciiTraceHelper::DefaultDequeueSinkWithContext, stream));
     Config::ConnectWithoutContext(oss.str(), MakeCallback(&P2PDropPacket));
+//
+//    oss.str("");
+//    oss << "/NodeList/*/DeviceList/*/$ns3::PointToPointNetDevice";
+//    Config::ConnectWithoutContext(oss.str(), MakeCallback(&LinkOnPacket));
+
     string choices[] = {"gw-13041","gw-12505","gw-13130","gw-13134","gw-12669","gw-12550","gw-13035",
      "gw-12691","gw-12658","gw-12679","gw-12610","gw-12848","gw-12633","gw-12692",
      "gw-13117","gw-12660","gw-12549","gw-12501","gw-12546","gw-12502","gw-12909",
@@ -293,6 +323,7 @@ int main (int argc, char *argv[])
 			}
 
 		}
+
 
     cout<<pros.str()<<endl;
     } else
@@ -325,7 +356,7 @@ int main (int argc, char *argv[])
   ndn::AppHelper consumerHelper ("ns3::ndn::"+consumerClass);
   consumerHelper.SetAttribute ("q", StringValue ("0")); // 100 interests a second
   consumerHelper.SetAttribute ("s", StringValue (zipfs)); // 100 interests a second
-  consumerHelper.SetAttribute ("NumberOfContents", StringValue ("2000")); // 100 interests a second
+  consumerHelper.SetAttribute ("NumberOfContents", StringValue ("100000")); // 100 interests a second
   consumerHelper.SetAttribute ("Frequency", StringValue (freq)); // 100 interests a second
 
 
@@ -375,6 +406,8 @@ int main (int argc, char *argv[])
 			producerHelper.SetPrefix(aPrefix);
 			producerHelper.Install(pn);
 			ccnxGlobalRoutingHelper.AddOrigins (aPrefix, pn);
+
+			pn->GetApplication(0)->TraceConnectWithoutContext("ReceivedInterests", MakeCallback(&ProducerOnInterest));
 		}
 
 	}
@@ -397,5 +430,12 @@ int main (int argc, char *argv[])
   Simulator::Run ();
   Simulator::Destroy ();
   NS_LOG_INFO ("Done.");
+  map<string, uint32_t>::iterator it;
+  it = producerReceivedInterestN.begin();
+  while (it != producerReceivedInterestN.end())
+  {
+	  cout<<(*it).first<<" "<<(*it).second<<endl;
+	  ++it;
+  }
   return 0;
 }
