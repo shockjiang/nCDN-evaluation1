@@ -462,7 +462,7 @@ class God(Manager):
 #         os.chdir(dir)
         self.cases = {}
         
-        Min_Freq = 80
+        Min_Freq = 40
         #Min_Freq = 100
         Max_Freq = 200
         Step = 10
