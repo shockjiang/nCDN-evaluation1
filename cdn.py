@@ -470,8 +470,8 @@ class God(Manager):
         self.zipfs = [0.99, 0.92, 1.04]
         self.zipfs = [0.99]
         self.duration = 50
-        self.producerN = [10, 12, 15, 18, 20]
-        self.producerN = [10, 12, 15]
+        self.producerN = [5, 10, 12, 15, 18, 20, 25, 30]
+        #self.producerN = [10, 12, 15]
         self.seeds = range(3, 9)
         self.seeds = [3]
         self.multicast = ["false", "true"]
