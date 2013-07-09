@@ -276,7 +276,7 @@ class Case(Manager, threading.Thread):
         self.setDaemon(True)
         self.result = None
         
-        self.cmd = "./waf --run \'cdn"
+        self.cmd = "./waf --run \'cdn-reliability"
         self.param = param
         
         for key, val in param.items():
