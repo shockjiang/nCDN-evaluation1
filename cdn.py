@@ -273,7 +273,7 @@ class Case(Manager, threading.Thread):
         threading.Thread.__init__(self)
         Manager.__init__(self, Id)
         
-        self.setDaemon(True)
+        self.setDaemon(False)
         self.result = None
         
         self.cmd = "./waf --run \'cdn"
