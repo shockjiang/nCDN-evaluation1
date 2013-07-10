@@ -4,8 +4,11 @@ def build(bld):
     obj = bld.create_ns3_program('cdn', ['ndnSIM'])
     obj.source = 'cdn.cc'
 
-    obj = bld.create_ns3_program('cdn-reliability', ['ndnSIM'])
-    obj.source = 'cdn-reliability.cc'
+    obj = bld.create_ns3_program('cdn-nodedown', ['ndnSIM'])
+    obj.source = 'cdn-nodedown.cc'
+
+    obj = bld.create_ns3_program('cdn-linkfail', ['ndnSIM'])
+    obj.source = 'cdn-linkfail.cc'
 
     #obj = bld.create_ns3_program('shock', ['ndnSIM'])
     #obj.source = 'test.cc'

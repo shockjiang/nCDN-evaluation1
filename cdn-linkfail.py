@@ -117,6 +117,8 @@ class Manager:
                         Id += "-" + str(v[0])
                 else:
                     Id += "-"+str(v)
+            elif k.startswith("id") or k.startswith("trace"):
+                continue
             else:
                 Id += "-" + str(k)            
                 if isinstance(v, list):
@@ -165,7 +167,7 @@ class Manager:
     
     
 class Stat(Manager):
-    def __init__(self, Id, cases, headers=["caseId", "unsatisfiedRequestN", "dropedPacketN", "nackedPacketN"]):
+    def __init__(self, Id, cases, headers=["caseId", "time", "droppedPacketN", "changeProducerN", "satisfiedRequestN", "unsatisfiedRequestN"]):
         Manager.__init__(self, Id)
         self.cases = cases
         self.headers = headers
@@ -179,82 +181,30 @@ class Stat(Manager):
             self.log.warn(key + "is not in the headers")
             return -2
         index = self.headers.index(key) - 1
-        return self.data[caseId][index]
+        
+        if isinstance(self.data[caseId][0], list): #self.data[caseId]= [['time', 'value'],[1,'a'],[2,'b']]
+            li = []
+            for liv in self.data[caseId]:
+                li.append(liv[index])
+            return li
+        return self.data[caseId][index]  #self.data[caseId] = ['freq', 'value']
     
     #### to be overloaded    
     def stat(self):
         self.log.info("> Stat: "+self.Id+" begins")
-            
-        if not self.isRefresh and os.path.exists(self.out):#read data from existing result
-            self.log.info(self.out+" is there")
-            fin = open(self.out)
-            for line in fin.readlines():
-                line = line.strip()
-                if line.startswith("#headers:"):
-                    cols = line[len("#headers:"):].strip().split()
-                    if self.headers != cols:
-                        self.log.warn("stat file headers are different: self.headers="+str(self.headers)+" InFileHeaders="+str(cols))
-                elif line.startswith("#command:"):
-                    pass    
-                elif line != "":
-                    cols = line.split()
-                    caseId = cols[0]
-                    
-                    li = [int(cols[i]) for i in range(1, len(cols))]
-                    self.data[caseId] = li
-                    self.log.debug("column:" + line)
-            self.log.info(self.Id+" get data from file")     
-              
-        else:   #read and stat the case.out
-            self.log.info("headers: "+ str(self.headers)) 
-            for caseId in self.cases:
-                case = self.cases[caseId]
-                unsatisfiedRequestN = 0
-                dropedPacketN = 0
-                nackedPacketN = 0
-                
-                if (case.result == False):
-                    unsatisfiedRequestN = -1
-                    dropedPacketN = -1
-                    nackedPacket = -1
-                else:
-                    fin = open(case.out)
-                    for line in fin.readlines():
-                        line = line.strip()
-                        if line == "" or line.startswith("#"):
-                            continue
-                        if line.startswith("trace") and line.find("timeout") != -1:
-                            unsatisfiedRequestN += 1
-                        elif line.startswith("trace: Drop Packet"):
-                            dropedPacketN += 1
-                        elif line.startswith("trace") and line.endswith("nack back"):
-                            nackedPacketN += 1
-                    fin.close()
-                
-                self.data[case.Id] = [unsatisfiedRequestN, dropedPacketN, nackedPacketN]
-                
-                self.log.debug(caseId+": "+str(self.data[case.Id]))
+        
+        for Id, case in self.cases.items():
+            fp = os.path.join(OUT, "Case", "request-"+Id+".txt")
+            f = open(fp)
+            self.data[Id] = []
+            self.log.debug("stat add Id: "+Id)
+            for line in f.readlines():
+                if line.startswith("#"):
+                    continue
+                parts = line.split()
+                parts[0] = int(parts[0])/1000.0
+                self.data[Id].append( parts )
 
-            fout = open(self.out, "w") #write the data to result file
-            line = ""
-            for header in self.headers:
-                line += "\t" + header
-            line.strip()
-            line = "#headers: " + line+"\n"
-            fout.write(line)
-            line = "#command: " + case.cmd + "\n"
-            fout.write(line)
-            for caseId in self.data:
-                li = self.data[caseId]
-                line = caseId
-                for col in li:
-                    line += "\t" + str(col)
-                line += "\n"
-                self.log.debug("write data: "+str(line)) 
-                fout.write(line)
-            
-            fout.close()
-            self.log.info(self.Id+" write data to file")
         self.log.info("< Stat: "+self.Id+" ends")
         
 class Case(Manager, threading.Thread):
@@ -276,7 +226,7 @@ class Case(Manager, threading.Thread):
         self.setDaemon(True)
         self.result = None
         
-        self.cmd = "./waf --run \'cdn"
+        self.cmd = "./waf --run \'cdn-linkfail"
         self.param = param
         
         for key, val in param.items():
@@ -349,7 +299,6 @@ class Line(Manager):
         self.ys = [dots[i].y for i in range(dotN)]
         self.plt = plt
         
-        
 class Figure(Manager):
     """ information of Figure
         such as title, xlabel, ylabel, etc
@@ -377,6 +326,9 @@ class Figure(Manager):
         plt.ylabel(self.canvas.pop("ylabel", " "))    
         plt.legend(**self.canvas)
         
+        plt.plot([5], [0], 'o')
+        plt.annotate('Key Node is Down', xy=(5,0), xytext=(4, 500),
+                     arrowprops=dict(facecolor='black', shrink=0.05))
         
         plt.grid(True)
 
@@ -467,11 +419,12 @@ class God(Manager):
         Max_Freq = 200
         Step = 10
         self.freqs = range(Min_Freq, Max_Freq+Step, Step)
+        self.freqs = [80]
         self.zipfs = [0.99, 0.92, 1.04]
         self.zipfs = [0.99]
-        self.duration = 60
+        self.duration = 10
         self.producerN = [5, 10, 15, 18, 20, 25, 30]
-        self.producerN = [5, 10, 15, 20, 25, 30]
+        self.producerN = [30]
         #self.producerN = [10, 12, 15]
         self.seeds = range(3, 9)
         self.seeds = [3]
@@ -503,29 +456,32 @@ class God(Manager):
     def setup(self):
         self.log.info("> "+ self.Id + " setup begins")
         cases = self.cases
-        for freq in self.freqs:
-            dic = {}
-            dic["freq"] = freq
-            for consumer in self.consumerClasses:
-                dic["consumerClass"] = consumer
-                for seed in self.seeds:
-                    dic["RngRun"] = seed
-                    for producerN in self.producerN:
-                        dic["producerN"] = producerN
-                        for multicast in self.multicast:
-                            dic["multicast"] = multicast
-                            if consumerClass == "CDNConsumer" and multicast == "false":
-                                continue
-                            if consumerClass == "CDNIPConsumer" and multicast == "true":
-                                continue
-                            for zipfs in self.zipfs:
-                                dic["zipfs"] = zipfs
-                                
-                                dic["duration"] = self.duration
-    
-                                Id = self.parseId(dic)
-                                case = Case(Id=Id, param=dic, **dic)
-                                cases[Id] = case
+
+        
+        for consumerClass in self.consumerClasses:
+            for multicast in self.multicast:
+                if consumerClass == "CDNConsumer" and multicast == "false":
+                    continue
+                if consumerClass == "CDNIPConsumer" and multicast == "true":
+                    continue
+                dic = {}
+                dic["freq"] = 70
+                dic["RngRun"] = 3
+                dic["producerN"] = 30
+                dic["zipfs"] = 0.92
+                dic["duration"] = 26
+                dic["item"] = "linkfail"
+                dic["consumerClass"] = self.consumerClasses
+                dic["multicast"] = self.multicast
+                trace = self.parseId(dic)
+                dic["trace"] = trace
+                
+                dic["consumerClass"] = consumerClass
+                dic["multicast"] = multicast 
+                Id = self.parseId(dic)
+                dic["id"] = Id
+                case = Case(Id=Id, param=dic)
+                cases[Id] = case
         
         self.stat = Stat(Id=self.parseId(self.dic), cases=self.cases)
         #self.log.info("Stat: "+self.stat.Id+" begin")
@@ -576,124 +532,77 @@ class God(Manager):
                     if case.isAlive():
                         case.join()
         
-        self.stat.stat()
+        
+        
+    
         self.log.info("< "+ self.Id + " setup ends " +\
                       "TotalN="+str(len(cases))+" SuccessN="+str(Case.SuccessN)+ " ExsitingN="+str(Case.ExistingN) +" FailN="+str(Case.FailN))
-        
-
-                
-        
-    def throughput(self, dic):
-        lines = []
-        for multicast in self.multicast:
-            dic["multicast"] = multicast
-            for consumerClass in self.consumerClasses: 
-                dic["consumerClass"] = consumerClass
-                dots = []
-                
-                if multicast == "false" and consumerClass == "CDNConsumer":
-                    continue
-                
-                for producerN in self.producerN:
-                    dic["producerN"] = producerN
-                    
-                    y = self.freqs[0]
-                    for i in range(len(self.freqs)-1, -1, -1):
-                        freq = self.freqs[i]
-                        dic["freq"] = freq
-                
-                        Id = self.parseId(dic)    
-                        tt = self.stat.get(Id, "unsatisfiedRequestN") + self.stat.get(Id, "nackedPacketN")
-                        if tt < 10:
-                            y = freq
-                            break
-                            
-                    dot = Dot(x=producerN, y=y)
-                    
-                    dots.append(dot)
-                
-                if consumerClass == "CDNConsumer":
-                   label = "NDN"
-                else:
-                    label = "IP"
-                    if multicast == "true":
-                        label += " with Multicast"
-                
-                plt = {}
-                plt["label"] = label
-                #plt={"color":"b", "style":"o--", "label":"Impact of Interest Set"}
-                line = Line(dots = dots, plt=plt)
-                lines.append(line)
-        canvas = {}
-        canvas["xlabel"] = "# of Producer"
-        canvas["ylabel"] = "# of Unsatisfied Requests"
-        #canvas[]
-        fig = Figure(Id="scalability-RngRun"+str(dic["RngRun"])+"-zipf"+str(dic["zipfs"]), lines = lines, canvas=canvas)
-        fig.line()
-        
-#         dic["freq"] = 100
-#         dic["RngRun"] = 3
-#         dic["producerN"] = 10
-#         dic["zipfs"] = 0.92
-#         dic["duration"] = 50
-#         dic["multicast"] = "true"
-#         dic["consumerClass"] = "CDNConsumer"
-#         for producerN in self.producerN:
-#             dic["producerN"] = producerN
-#             Id = self.parseId(dic)
-#             y = self.stat.get(Id, "unsatisfiedRequestN")
-#             print y
-
-
-#         for freq in self.freqs:
-#             dic = {}
-#             dic["freq"] = freq
-#             for consumer in self.consumerClasses:
-#                 dic["consumerClass"] = consumer
-#                 for seed in self.seeds:
-#                     dic["RngRun"] = seed
-#                     for producerN in self.producerN:
-#                         dic["producerN"] = producerN
-#                         for multicast in self.multicast:
-#                             dic["multicast"] = multicast
-#                             for zipfs in self.zipfs:
-#                                 dic["zipfs"] = zipfs
-#                                 
-#                                 dic["duration"] = self.duration
-#     
-#                                 Id = self.parseId(dic)
-#                                 case = Case(Id=Id, param=dic, **dic)
-#                                 cases[Id] = case
     
-    def create(self, func=throughput):
+    def reliability(self):
+        pass
+    
+    
+    def create(self, func):
 #         scalability: x-producerN, y-unsatisfiedRequest
 #         QoS
 #         bandwidth
 #         latency
 #         loss
-        freqs = [100]
-        consumerClass = self.consumerClasses
-        seeds = [3]
-        producerN = [10]
-        multicast = self.multicast
-        zipfs = [0.92]
-        duration = [50]
+        self.stat.stat()
+        lines = []
+        for Id, case in self.cases.items():
+            times = self.stat.get(Id, "time")
+            unsatisfiedRequestNs = self.stat.get(Id, "unsatisfiedRequestN")
+            self.log.debug("times="+str(times)+" Ns="+str(unsatisfiedRequestNs))
+            assert len(times) == len(unsatisfiedRequestNs), "length is not equal"
+            dots = []
+            for i in range(len(times)):
+                dot = Dot(x=times[i], y=unsatisfiedRequestNs[i])
+                dots.append(dot)
+            
+            plt = {}
+            
+            if case.param["consumerClass"] == "CDNConsumer":
+                label = "NDN"
+            elif  case.param["consumerClass"] == "CDNIPConsumer":
+                label = "IP"
+                if case.param["multicast"] == "true":
+                    label += " with Multicast"
+            self.log.debug("consumerClass="+case.param["consumerClass"]+" multicast="+case.param["multicast"])
+            plt["label"] = label
+            line = Line(dots = dots, plt=plt)
+            lines.append(line)
         
-        #scalabiltiy
-        dic = {}
-        dic["freq"] = 100
-        dic["RngRun"] = 3
-        dic["producerN"] = 10
-        dic["zipfs"] = 0.92
-        dic["duration"] = 50
-        
-        for seed in self.seeds:
-            dic["RngRun"] = seed
-            for zipfs in self.zipfs:
-                dic["zipfs"] = zipfs
-                
-                func(self, dic)
-        
+        canvas = {}
+        canvas["loc"] = "upper left"
+        canvas["xlabel"] = "time (Second)"
+        canvas["ylabel"] = "Unsatisfied Request #"
+        fig = Figure(Id="reliabiltiy-link", lines=lines, canvas=canvas)
+        fig.line()
+
+#         freqs = [100]
+#         consumerClass = self.consumerClasses
+#         seeds = [3]
+#         producerN = [10]
+#         multicast = self.multicast
+#         zipfs = [0.92]
+#         duration = [50]
+#         
+#         #scalabiltiy
+#         dic = {}
+#         dic["freq"] = 100
+#         dic["RngRun"] = 3
+#         dic["producerN"] = 10
+#         dic["zipfs"] = 0.92
+#         dic["duration"] = self.duration
+#         
+#         for seed in self.seeds:
+#             dic["RngRun"] = seed
+#             for zipfs in self.zipfs:
+#                 dic["zipfs"] = zipfs
+#                 
+#                 func(self, dic)
+#         
 def stop():
     print "-------------- Kill Python ------------"
     os.system("pkill Python")
@@ -719,12 +628,13 @@ if __name__=="__main__":
             
     god = God(paper="cdn-over-ip")
     
-    try:    
+    try:
         god.setup()
     except IOError as e:
         self.log.error("I/O error({0}): {1}".format(e.errno, e.strerror))
     else:
-        god.create()
+        god.create(None)
+        pass
     finally:
         if (not DEBUG) and (not HOSTOS.startswith("Darwin")):
             god.notify(way="email")

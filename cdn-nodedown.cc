@@ -25,7 +25,6 @@
 #include <ctime>
 
 #include <sstream>
-//#include <sstream>
 #include "ns3/ptr.h"
 #include "ns3/log.h"
 #include "ns3/simulator.h"
@@ -102,13 +101,20 @@ NS_LOG_COMPONENT_DEFINE ("ShockExperiment");
 		 //TracedCallback<Ptr<const Packet> > m_macRxDropTrace;
 
 //bb-12593	bb-12842	98748738bps	1	5628us	2806
+
+static uint32_t unsatisfiedRequestN = 0;
+static uint32_t satisfiedRequestN = 0;
+static uint32_t droppedPacketN = 0;
+static uint32_t changeProducerN = 0;
 static void P2PDropPacket(Ptr<const Packet> pkt )
 {
+	droppedPacketN += 1;
 	cout<<"trace: Drop Packet: pkt="<<pkt<<endl;
 }
 
 static void TimeoutRequest(Ptr<App> app, uint32_t seq)
 {
+	unsatisfiedRequestN += 1;
 	cout<<"trace: seq="<<seq<<" is timeout"<<endl;
 	NS_LOG_INFO("seq="<<seq<<" is timeout");
 }
@@ -116,6 +122,7 @@ static void TimeoutRequest(Ptr<App> app, uint32_t seq)
 //Ptr<const InterestHeader> header, Ptr<App> app, Ptr<Face> face
 static void NackBack(Ptr<const InterestHeader> interest, Ptr<App> app, Ptr<Face> face)
 {
+	unsatisfiedRequestN += 1;
 	uint32_t seq = boost::lexical_cast<uint32_t> (interest->GetName ().GetComponents ().back ());
 	cout<<"trace: seq="<<seq<<" is nack back"<<endl;
 	//NS_LOG_INFO("seq="<<seq<<" is nack back");
@@ -123,6 +130,7 @@ static void NackBack(Ptr<const InterestHeader> interest, Ptr<App> app, Ptr<Face>
 
 static void ChangeProducer(Ptr<App> app, Ptr<ndn::fib::Entry> cur, Ptr<ndn::fib::Entry> tmp)
 {
+	changeProducerN += 1;
 	stringstream msg ;
 	if (cur == 0)
 		msg << "trace: app=" <<app->GetId() << " change prefix to " << tmp->GetPrefix() <<" from 0" ;
@@ -130,6 +138,14 @@ static void ChangeProducer(Ptr<App> app, Ptr<ndn::fib::Entry> cur, Ptr<ndn::fib:
 		msg << "trace: app=" <<app->GetId() <<  " change prefix to " << tmp->GetPrefix() << " from " << cur->GetPrefix() ;
 	cout<<msg.str()<<endl;
 }
+
+static void ConsumerOnContent(Ptr<const ContentObject>, Ptr<const Packet>,  Ptr<App>, Ptr<Face> )
+{
+	satisfiedRequestN += 1;
+}
+
+
+
 
 static map<string, uint32_t> producerReceivedInterestN;
 static void ProducerOnInterest(Ptr<const Interest> interest, Ptr<App> app, Ptr<Face> face)
@@ -146,6 +162,24 @@ static void ProducerOnInterest(Ptr<const Interest> interest, Ptr<App> app, Ptr<F
 		producerReceivedInterestN[name] += 1;
 	}
 }
+
+ofstream fout;
+void printRate()
+{
+
+	  fout<< Simulator::Now().ToDouble (Time::MS)<<"\t"<<droppedPacketN<<"\t"<<changeProducerN
+			  <<"\t"<<satisfiedRequestN<<"\t"<<unsatisfiedRequestN<<endl;
+
+	  cout<< Simulator::Now().ToDouble (Time::MS)<<"\t"<<droppedPacketN<<"\t"<<changeProducerN
+			  <<"\t"<<satisfiedRequestN<<"\t"<<unsatisfiedRequestN<<endl;
+
+	  droppedPacketN = 0;
+	  changeProducerN = 0;
+	  unsatisfiedRequestN = 0;
+	  Simulator::Schedule (Seconds(0.5), &printRate);
+
+}
+
 //
 //
 //static uint32_t linkReceivedInterestN = 0;
@@ -184,7 +218,7 @@ int main (int argc, char *argv[])
   std::string consumerClass="CDNConsumer";//consumerCbr
   std::string csSize = "0";
   std::string debug = "false";
-  double duration =  1.5;
+  double duration =  2;
   std::string freq = "100";
   /*
    * freq = 100, perfect
@@ -193,12 +227,13 @@ int main (int argc, char *argv[])
    * freq = 160, 16
    * freq = 170
    */
-  string item = "throughput";//"reliability";
+  string id = "id";
+  string item = "reliability";//"reliability";
   std::string multicast = "true";
   std::string nack = "true";
-  int producerN = 2;
+  int producerN = 3;
   //int seed = 3;
-  std::string tracefile = "trace";
+  std::string trace = "trace";
   std::string zipfs = "1.2";
 
 
@@ -209,21 +244,22 @@ int main (int argc, char *argv[])
   cmd.AddValue("debug", "simulation time", debug);
   cmd.AddValue("duration", "simulation time", duration);
   cmd.AddValue("freq", "Interest Freqence of consumer", freq);
+  cmd.AddValue("id", "id of the case", id);
   cmd.AddValue("item", "Case Item: throughput|reliability", item);
   cmd.AddValue("multicast", "enable Nack or not", multicast);
   cmd.AddValue("nack", "enable Nack or not", nack);
   cmd.AddValue("producerN", "number of producers", producerN);
   //cmd.AddValue("RngRun", "seed of RNG", seed);
-  cmd.AddValue("trace", "trace file", tracefile);
+  cmd.AddValue("trace", "trace file", trace);
   cmd.AddValue("zipfs", "S of zipf", zipfs);
 
   cmd.Parse (argc, argv);
 
   UniformVariable rng = UniformVariable();
         //SeedManager::SetSeed (seed);
-  if (tracefile == "trace")
+  if (id == "id")
   {
-	  tracefile = consumerClass+"-csSize"+csSize+"-duration"+boost::lexical_cast<std::string>(duration)+
+	  id = consumerClass+"-csSize"+csSize+"-duration"+boost::lexical_cast<std::string>(duration)+
 			  "-freq"+freq+ "-item"+item + "-multicast"+multicast+"-nack"+nack+"-producerN"+boost::lexical_cast<std::string>(producerN)+
 			  "-RngRun"+boost::lexical_cast<std::string>(SeedManager::GetRun())+"-zipfs"+zipfs;
   }
@@ -232,7 +268,6 @@ int main (int argc, char *argv[])
   //Config::SetDefault ("ns3::PointToPointChannel::Delay", StringValue ("10ms"));
   //Config::SetDefault ("ns3::DropTailQueue::MaxPackets", StringValue("5"));
   Config::SetDefault("ns3::ndn::fw::Nacks::EnableNACKs", StringValue(nack));
-
 
     AnnotatedTopologyReader topologyReader ("", 10);
 
@@ -299,8 +334,8 @@ int main (int argc, char *argv[])
 //    oss << "/NodeList/*/DeviceList/*/$ns3::PointToPointNetDevice";
 //    Config::ConnectWithoutContext(oss.str(), MakeCallback(&LinkOnPacket));
 
-    string choices[] = {"gw-13041","gw-12505","gw-13130","gw-13134","gw-12669","gw-12550","gw-13035",
-     "gw-12691","gw-12658","gw-12679","gw-12610","gw-12848","gw-12633","gw-12692",
+    string choices[] = {"gw-13041","gw-12505","gw-12610", "gw-13130","gw-13134","gw-12669","gw-12550","gw-13035",
+     "gw-12691","gw-12658","gw-12679","gw-12848","gw-12633","gw-12692",
      "gw-13117","gw-12660","gw-12549","gw-12501","gw-12546","gw-12502","gw-12909",
      "gw-13129","gw-12910","gw-12585","gw-12838","gw-13045","gw-12779","gw-12487","gw-13114","gw-13000"};
 
@@ -414,28 +449,46 @@ int main (int argc, char *argv[])
 
 	}
 
+	for (NodeContainer::Iterator node = consumerNodes.Begin(); node != consumerNodes.End(); node ++)
+	{
+		Ptr<Node> pn = *node;
+		pn->GetApplication(0)->TraceConnectWithoutContext("ReceivedContentObjects", MakeCallback(&ConsumerOnContent));
+	}
+
   topologyReader.ApplyOspfMetric ();
   ndn::GlobalRoutingHelper::CalculateRoutes ();
 
-  NS_LOG_INFO(tracefile);
+
 
   NS_LOG_INFO ("Run Simulation.");
+  string s = "examples/shock/output/cdn-over-ip/Case/request-"+id+".txt";
+
+  fout.open(s.c_str());
+  fout<< "#time\t"<<"droppedPacketN"<<"\tchangeProducerN" <<"\tsatisfiedRequestN"<<"\tunsatisfiedRequestN"<<endl;
+  Simulator::Schedule(Seconds(0.5), &printRate);
+  //fout.close();
+  //printRate(s);
+
   Simulator::Stop(Seconds(duration));
     
-    if (debug == "true" || item == "reliability")
-    {
-        boost::tuple< boost::shared_ptr<std::ostream>, std::list<Ptr<ndn::AppDelayTracer> > >
-        tracers = ndn::AppDelayTracer::InstallAll ("examples/shock/output/cdn-over-ip/Case/app-"+tracefile+".txt");
-    }
+//    if (debug == "true" || item == "reliability")
+//    {
+//    	  boost::tuple< boost::shared_ptr<std::ostream>, std::list<Ptr<ndn::AppDelayTracer> > >
+//    	    tracers = ndn::AppDelayTracer::InstallAll ("app-delays-trace.txt");
+//        //tracers = ndn::AppDelayTracer::InstallAll ("examples/shock/output/cdn-over-ip/Case/app-2.txt");
+//    }
 
 
-  if (item == "reliability")
-  {
-	  cout<<"reliability"<<endl;
 	  Ptr<Node> pn = Names::Find<Node>("gw-12610");
 	  Ptr<Application> app = pn->GetApplication(0);
-	  app->SetStopTime(Seconds(20.0));
-  }
+	  int hd = 5;
+	  if (duration <10)	hd = duration/2;
+	  app->SetStopTime(Seconds(hd));
+	  //app->SetStartTime(Seconds(15));
+
+
+
+
   Simulator::Run ();
   Simulator::Destroy ();
   NS_LOG_INFO ("Done.");
@@ -446,5 +499,8 @@ int main (int argc, char *argv[])
 	  cout<<(*it).first<<" "<<(*it).second<<endl;
 	  ++it;
   }
+
+
+
   return 0;
 }
