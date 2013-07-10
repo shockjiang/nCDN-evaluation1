@@ -514,9 +514,9 @@ class God(Manager):
                         dic["producerN"] = producerN
                         for multicast in self.multicast:
                             dic["multicast"] = multicast
-                            if consumerClass == "CDNConsumer" and multicast == "false":
+                            if consumer == "CDNConsumer" and multicast == "false":
                                 continue
-                            if consumerClass == "CDNIPConsumer" and multicast == "true":
+                            if consumer == "CDNIPConsumer" and multicast == "true":
                                 continue
                             for zipfs in self.zipfs:
                                 dic["zipfs"] = zipfs
