@@ -495,10 +495,6 @@ int main (int argc, char *argv[])
 //    }
 
 
-	  int hd = 5;
-	  if (duration <10)	hd = duration/2;
-
-
 
 	  //bb-12600	bb-12613	97954105bps	1	7463us	2783
 	  //gw-12610	gw-12679	11682617bps	8	9674us	332

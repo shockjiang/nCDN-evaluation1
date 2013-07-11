@@ -23,7 +23,7 @@ IS_MT = True #Multi Threads Run
 IS_REFRESH = True
 IS_REFRESH = False
 
-MAX_THREADN = 100
+MAX_THREADN = 24
 
 OUT = "output"
 
@@ -528,6 +528,8 @@ class God(Manager):
                                 cases[Id] = case
         
         self.stat = Stat(Id=self.parseId(self.dic), cases=self.cases)
+        self.stat.isRefresh = True
+
         #self.log.info("Stat: "+self.stat.Id+" begin")
         Case.TotalN = len(cases)
         if not self.isRefresh and (not self.stat.isRefresh) and os.path.exists(self.stat.out):
@@ -589,10 +591,11 @@ class God(Manager):
             dic["multicast"] = multicast
             for consumerClass in self.consumerClasses: 
                 dic["consumerClass"] = consumerClass
-                dots = []
-                
-                if multicast == "false" and consumerClass == "CDNConsumer":
+                if consumerClass == "CDNIPConsumer" and multicast == "true":
                     continue
+                if consumerClass == "CDNConsumer" and multicast == "false":
+                    continue
+                dots = []
                 
                 for producerN in self.producerN:
                     dic["producerN"] = producerN
@@ -677,7 +680,7 @@ class God(Manager):
         producerN = [10]
         multicast = self.multicast
         zipfs = [0.92]
-        duration = [50]
+        duration = self.duration
         
         #scalabiltiy
         dic = {}
@@ -685,7 +688,7 @@ class God(Manager):
         dic["RngRun"] = 3
         dic["producerN"] = 10
         dic["zipfs"] = 0.92
-        dic["duration"] = 50
+        dic["duration"] = self.duration
         
         for seed in self.seeds:
             dic["RngRun"] = seed
