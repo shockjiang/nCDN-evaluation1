@@ -469,7 +469,7 @@ class God(Manager):
         self.freqs = range(Min_Freq, Max_Freq+Step, Step)
         self.zipfs = [0.99, 0.92, 1.04]
         self.zipfs = [0.99]
-        self.duration = 60
+        self.duration = 300
         self.producerN = [5, 10, 15, 18, 20, 25, 30]
         self.producerN = [5, 10, 15, 20, 25, 30]
         #self.producerN = [10, 12, 15]
@@ -607,7 +607,7 @@ class God(Manager):
                 
                         Id = self.parseId(dic)    
                         tt = self.stat.get(Id, "unsatisfiedRequestN") + self.stat.get(Id, "nackedPacketN")
-                        if tt < 10:
+                        if tt < 1000:
                             y = freq
                             break
                             
