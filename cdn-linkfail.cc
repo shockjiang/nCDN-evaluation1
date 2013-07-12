@@ -37,7 +37,7 @@
 #include "ns3/internet-module.h"
 #include "ns3/point-to-point-module.h"
 #include "ns3/applications-module.h"
-
+#include "ns3/animation-interface.h"
 #include "ns3/ndn-app-face.h"
 #include "ns3/ndn-interest.h"
 #include "ns3/ndn-content-object.h"
@@ -184,13 +184,14 @@ void disableLink(Ptr<ndn::Face> face1, Ptr<ndn::Face> face2)
 {
 	face1->SetUp(false);
 	face2->SetUp(false);
-
+	cout<<Simulator::Now().ToDouble(Time::MS)<<"\tdisable link";
 }
 
 void enableLink(Ptr<ndn::Face> face1, Ptr<ndn::Face> face2)
 {
 	face1->SetUp(true);
 	face2->SetUp(true);
+	cout<<Simulator::Now().ToDouble(Time::MS)<<"\tenable link";
 }
 
 
@@ -476,7 +477,7 @@ int main (int argc, char *argv[])
 
 
 
-  NS_LOG_INFO ("Run Simulation.");
+
   string s = "examples/shock/output/cdn-over-ip/Case/request-"+id+".txt";
 
   fout.open(s.c_str());
@@ -499,8 +500,13 @@ int main (int argc, char *argv[])
 	  //bb-12600	bb-12613	97954105bps	1	7463us	2783
 	  //gw-12610	gw-12679	11682617bps	8	9674us	332
 	  //gw-12610	bb-13049	19512871bps	5	7163us	555
-	  Ptr<Node> node1 = Names::Find<Node>("gw-12610");
-	  Ptr<Node> node2 = Names::Find<Node>("bb-13049");
+  	  //bb-12884 126  , gw-13004 243
+  	  //gw-12572, gw-12754
+	  Ptr<Node> node1 = Names::Find<Node>("gw-12752");
+	  Ptr<Node> node2 = Names::Find<Node>("gw-12754");
+
+
+	  //AnimationInterface::SetNodeColor(node1, 255, 0, 0);
 
 	  Ptr<ndn::L3Protocol> ndn1 = node1->GetObject<ndn::L3Protocol> ();
 	  Ptr<ndn::L3Protocol> ndn2 = node2->GetObject<ndn::L3Protocol> ();
@@ -529,13 +535,13 @@ int main (int argc, char *argv[])
 	          Ptr<ndn::Face> face2 = ndn2->GetFaceByNetDevice (nd2);
 
 	          Simulator::Schedule(Seconds(5.0), disableLink, face1, face2);
-	          Simulator::Schedule(Seconds(5.0), enableLink, face1, face2);
+	          //Simulator::Schedule(Seconds(15.0), enableLink, face1, face2);
 	          cout<<"disable the link"<<endl;
 	          break;
 	        }
 	    }
 
-
+NS_LOG_INFO ("Run Simulation.");
   Simulator::Run ();
   Simulator::Destroy ();
   NS_LOG_INFO ("Done.");

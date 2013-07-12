@@ -319,7 +319,8 @@ class Figure(Manager):
             self.log.info("line.xs="+str(line.xs))
             self.log.info("line.ys="+str(line.ys))
             self.log.info("plt atts="+str(line.plt))
-            can = plt.plot(line.xs, line.ys, line.plt.pop("style", "o-"), **line.plt)
+            ys = [int(y)/100.0 for y in line.ys]
+            can = plt.plot(line.xs, ys, line.plt.pop("style", "o-"), **line.plt)
             cans.append(can)
         
         plt.xlabel(self.canvas.pop("xlabel", " "))
@@ -327,7 +328,7 @@ class Figure(Manager):
         plt.legend(**self.canvas)
         
         plt.plot([5], [0], 'o')
-        plt.annotate('Key Node is Down', xy=(5,0), xytext=(4, 500),
+        plt.annotate('Key Link is Down', xy=(5,0), xytext=(2, 5),
                      arrowprops=dict(facecolor='black', shrink=0.05))
         
         plt.grid(True)
@@ -338,51 +339,54 @@ class Figure(Manager):
         
         self.log.info(self.Id+" ends")
     
-    
     def bar(self):
         self.log.debug(self.Id+" begin to draw ")
         plt.clf()
         
-        plt.xticks([i+0.3 for i in range(6)], ("Transmission Time", "Hops", "Data Recieved"))
         self.bars = []
+        Width = 0.2
+        i = 0
         for line in self.lines:
 #             if hasattr(line, "label") and line.label != None:
 #                 plt.plot(line.xs, line.ys, self.style, label=line.label)
 #             else:
 #                 plt.plot(line.xs, line.ys, self.style)
-#    
-            print "line.xs=",line.xs
-            print "line.ys=", line.ys       
-            bar = plt.bar(left=line.xs, height=line.ys, wIdth=0.3, bottom=0, **line.plt)
+#        
+            xs = [j+Width * i for j in line.xs]
+            print "line.xs=",xs
+            print "line.ys=", line.ys
+            print "xs=",xs
+            ys = [int(j) for j in line.ys]
+            bar = plt.bar(left=xs, height=ys, width=Width, bottom=0, **line.plt)
             self.bars.append(bar)
-            
+            i += 1
         #plt.legend( (p1[0], p2[0]), ('Men', 'Women') )
         
         plt.legend((self.bars[i][0] for i in range(len(self.lines))), (self.lines[i].plt["label"] for i in range(len(self.lines))))
         #for bar in self.bars:
-
+        
+        xs = [Width * len(self.lines)/2 + j for j in line.xs]
+        print xs
+        plt.xticks(xs, line.xs)
                 
-        plt.grId(True)
-        if self.xlabel != None:
-            plt.xlabel(self.xlabel);
-        if self.ylabel != None:
-            plt.ylabel(self.ylabel);
-        if self.title != None:
-            plt.title(self.title)
-            
-        if self.ymin != None:
-            plt.ylim(ymin=self.ymin)
-        if self.ymax != None:
-            plt.ylim(ymax=self.ymax)
+        plt.grid(True)
+        plt.xlabel(self.canvas.pop("xlabel", " "))
+        plt.ylabel(self.canvas.pop("ylabel", " "))    
+        plt.legend(**self.canvas)
+        plt.title(self.canvas.pop("title", " "))
+        
+#         if self.ymin != None:
+#             plt.ylim(ymin=self.ymin)
+#         if self.ymax != None:
+#             plt.ylim(ymax=self.ymax)
         #location: http://matplotlib.org/api/pyplot_api.html
-        plt.legend(loc=self.legendloc)
+        plt.legend(**self.canvas)
         self.log.debug(self.Id+" fig save to "+self.out) 
         plt.savefig(self.out)
         plt.close()
         
         self.log.info(self.Id+" finishes")
     
-
 # class Paper(Manager):
 #     """ information of paper, which includes multiple figure
 #     
@@ -469,13 +473,13 @@ class God(Manager):
                 dic["RngRun"] = 3
                 dic["producerN"] = 30
                 dic["zipfs"] = 0.92
-                dic["duration"] = 26
+                dic["duration"] = 15
                 dic["item"] = "linkfail"
                 dic["consumerClass"] = self.consumerClasses
                 dic["multicast"] = self.multicast
-                trace = self.parseId(dic)
-                dic["trace"] = trace
-                
+#                 trace = self.parseId(dic)
+#                 dic["trace"] = trace
+#                 
                 dic["consumerClass"] = consumerClass
                 dic["multicast"] = multicast 
                 Id = self.parseId(dic)
@@ -561,25 +565,27 @@ class God(Manager):
                 dots.append(dot)
             
             plt = {}
-            
             if case.param["consumerClass"] == "CDNConsumer":
                 label = "NDN"
+                color = "y"
             elif  case.param["consumerClass"] == "CDNIPConsumer":
                 label = "IP"
                 if case.param["multicast"] == "true":
                     label += " with Multicast"
+                color = "b"
             self.log.debug("consumerClass="+case.param["consumerClass"]+" multicast="+case.param["multicast"])
             plt["label"] = label
+            plt["color"] = color
             line = Line(dots = dots, plt=plt)
             lines.append(line)
         
         canvas = {}
         canvas["loc"] = "upper left"
-        canvas["xlabel"] = "time (Second)"
-        canvas["ylabel"] = "Unsatisfied Request #"
+        canvas["xlabel"] = "Time (Second)"
+        canvas["ylabel"] = "Unsatisfied Request # (x100)"
         fig = Figure(Id="reliabiltiy-link", lines=lines, canvas=canvas)
+        #fig.bar()
         fig.line()
-
 #         freqs = [100]
 #         consumerClass = self.consumerClasses
 #         seeds = [3]

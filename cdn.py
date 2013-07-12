@@ -393,37 +393,42 @@ class Figure(Manager):
         
         plt.xticks([i+0.3 for i in range(6)], ("Transmission Time", "Hops", "Data Recieved"))
         self.bars = []
+        Width = 1
+        i = 0
         for line in self.lines:
 #             if hasattr(line, "label") and line.label != None:
 #                 plt.plot(line.xs, line.ys, self.style, label=line.label)
 #             else:
 #                 plt.plot(line.xs, line.ys, self.style)
-#    
-            print "line.xs=",line.xs
-            print "line.ys=", line.ys       
-            bar = plt.bar(left=line.xs, height=line.ys, wIdth=0.3, bottom=0, **line.plt)
+#        
+            xs = [j+Width * i for j in line.xs]
+            print "line.xs=",xs
+            print "line.ys=", line.ys
+            print "xs=",xs       
+            bar = plt.bar(left=xs, height=line.ys, width=Width, bottom=0, **line.plt)
             self.bars.append(bar)
-            
+            i += 1
         #plt.legend( (p1[0], p2[0]), ('Men', 'Women') )
         
         plt.legend((self.bars[i][0] for i in range(len(self.lines))), (self.lines[i].plt["label"] for i in range(len(self.lines))))
         #for bar in self.bars:
-
+        
+        xs = [Width * len(self.lines)/2 + j for j in line.xs]
+        print xs
+        plt.xticks(xs, line.xs)
                 
-        plt.grId(True)
-        if self.xlabel != None:
-            plt.xlabel(self.xlabel);
-        if self.ylabel != None:
-            plt.ylabel(self.ylabel);
-        if self.title != None:
-            plt.title(self.title)
-            
-        if self.ymin != None:
-            plt.ylim(ymin=self.ymin)
-        if self.ymax != None:
-            plt.ylim(ymax=self.ymax)
+        plt.grid(True)
+        plt.xlabel(self.canvas.pop("xlabel", " "))
+        plt.ylabel(self.canvas.pop("ylabel", " "))    
+        plt.legend(**self.canvas)
+        plt.title(self.canvas.pop("title", " "))
+        
+#         if self.ymin != None:
+#             plt.ylim(ymin=self.ymin)
+#         if self.ymax != None:
+#             plt.ylim(ymax=self.ymax)
         #location: http://matplotlib.org/api/pyplot_api.html
-        plt.legend(loc=self.legendloc)
+        plt.legend(**self.canvas)
         self.log.debug(self.Id+" fig save to "+self.out) 
         plt.savefig(self.out)
         plt.close()
@@ -471,7 +476,7 @@ class God(Manager):
         self.zipfs = [0.99]
         self.duration = 300
         self.producerN = [5, 10, 15, 18, 20, 25, 30]
-        self.producerN = [5, 10, 15, 20, 25, 30]
+        self.producerN = [5, 10, 15, 18, 19, 20, 25, 30]
         #self.producerN = [10, 12, 15]
         self.seeds = range(3, 9)
         self.seeds = [3]
@@ -522,13 +527,13 @@ class God(Manager):
                                 dic["zipfs"] = zipfs
                                 
                                 dic["duration"] = self.duration
-    
+                                #dic["item"] = "scalability"
                                 Id = self.parseId(dic)
                                 case = Case(Id=Id, param=dic, **dic)
                                 cases[Id] = case
         
         self.stat = Stat(Id=self.parseId(self.dic), cases=self.cases)
-        self.stat.isRefresh = True
+        #self.stat.isRefresh = True
 
         #self.log.info("Stat: "+self.stat.Id+" begin")
         Case.TotalN = len(cases)
@@ -607,7 +612,7 @@ class God(Manager):
                 
                         Id = self.parseId(dic)    
                         tt = self.stat.get(Id, "unsatisfiedRequestN") + self.stat.get(Id, "nackedPacketN")
-                        if tt < 1000:
+                        if tt < 1500:
                             y = freq
                             break
                             
@@ -617,23 +622,25 @@ class God(Manager):
                 
                 if consumerClass == "CDNConsumer":
                    label = "NDN"
+                   color = "y"
                 else:
                     label = "IP"
                     if multicast == "true":
                         label += " with Multicast"
-                
+                    color = "b"
                 plt = {}
+                plt["color"] = color
                 plt["label"] = label
                 #plt={"color":"b", "style":"o--", "label":"Impact of Interest Set"}
                 line = Line(dots = dots, plt=plt)
                 lines.append(line)
         canvas = {}
-        canvas["xlabel"] = "# of Producer"
-        canvas["ylabel"] = "# of Unsatisfied Requests"
-        #canvas[]
+        canvas["xlabel"] = "Producer #"
+        canvas["ylabel"] = "Throughput: Frequency of Interest"
+        canvas["loc"] = "upper left"
         fig = Figure(Id="scalability-RngRun"+str(dic["RngRun"])+"-zipf"+str(dic["zipfs"]), lines = lines, canvas=canvas)
-        fig.line()
-        
+        #fig.line()
+        fig.bar()
 #         dic["freq"] = 100
 #         dic["RngRun"] = 3
 #         dic["producerN"] = 10

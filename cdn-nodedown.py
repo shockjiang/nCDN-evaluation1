@@ -319,7 +319,8 @@ class Figure(Manager):
             self.log.info("line.xs="+str(line.xs))
             self.log.info("line.ys="+str(line.ys))
             self.log.info("plt atts="+str(line.plt))
-            can = plt.plot(line.xs, line.ys, line.plt.pop("style", "o-"), **line.plt)
+            ys = [int(y)/100.0 for y in line.ys]
+            can = plt.plot(line.xs, ys, line.plt.pop("style", "o-"), **line.plt)
             cans.append(can)
         
         plt.xlabel(self.canvas.pop("xlabel", " "))
@@ -327,7 +328,7 @@ class Figure(Manager):
         plt.legend(**self.canvas)
         
         plt.plot([5], [0], 'o')
-        plt.annotate('Key Node is Down', xy=(5,0), xytext=(2, 500),
+        plt.annotate('Key Node is Down', xy=(5,0), xytext=(2, 15),
                      arrowprops=dict(facecolor='black', shrink=0.05))
         
         plt.grid(True)
@@ -564,19 +565,22 @@ class God(Manager):
             
             if case.param["consumerClass"] == "CDNConsumer":
                 label = "NDN"
+                color = "y"
             elif  case.param["consumerClass"] == "CDNIPConsumer":
                 label = "IP"
                 if case.param["multicast"] == "true":
                     label += " with Multicast"
+                color = "b"
             self.log.debug("consumerClass="+case.param["consumerClass"]+" multicast="+case.param["multicast"])
             plt["label"] = label
+            plt["color"] = color
             line = Line(dots = dots, plt=plt)
             lines.append(line)
         
         canvas = {}
         canvas["loc"] = "upper left"
         canvas["xlabel"] = "Time (Second)"
-        canvas["ylabel"] = "Unsatisfied Request #"
+        canvas["ylabel"] = "Unsatisfied Request # (x100)"
         fig = Figure(Id="reliabiltiy-node", lines=lines, canvas=canvas)
         fig.line()
 
