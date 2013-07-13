@@ -360,6 +360,7 @@ class Figure(Manager):
         self.lines = lines
         self.canvas = canvas   
         self.kwargs = kwargs
+        self.out2 = os.path.join(OUT, self.__class__.__name__, self.Id+".pdf")
         
     def line(self):
         self.log.debug(self.Id+" begin to draw ")
@@ -382,6 +383,7 @@ class Figure(Manager):
 
         self.log.debug(self.Id+" fig save to "+self.out) 
         plt.savefig(self.out)
+        plt.savefig(self.out2)
         plt.close()
         
         self.log.info(self.Id+" ends")
@@ -431,6 +433,7 @@ class Figure(Manager):
         plt.legend(**self.canvas)
         self.log.debug(self.Id+" fig save to "+self.out) 
         plt.savefig(self.out)
+        plt.savefig(self.out2)
         plt.close()
         
         self.log.info(self.Id+" finishes")
@@ -469,7 +472,7 @@ class God(Manager):
         
         Min_Freq = 40
         #Min_Freq = 100
-        Max_Freq = 200
+        Max_Freq = 250
         Step = 10
         self.freqs = range(Min_Freq, Max_Freq+Step, Step)
         self.zipfs = [0.99, 0.92, 1.04]
@@ -477,6 +480,7 @@ class God(Manager):
         self.duration = 300
         self.producerN = [5, 10, 15, 18, 20, 25, 30]
         self.producerN = [5, 10, 15, 18, 19, 20, 21, 25, 30]
+        self.producerN = [5, 10, 15, 18, 21, 25, 30]
         #self.producerN = [10, 12, 15]
         self.seeds = range(3, 9)
         self.seeds = [3]
@@ -637,7 +641,7 @@ class God(Manager):
         canvas["xlabel"] = "Producer #"
         canvas["ylabel"] = "Throughput: Frequency of Interest"
         canvas["loc"] = "upper left"
-        fig = Figure(Id="scalability-RngRun"+str(dic["RngRun"])+"-zipf"+str(dic["zipfs"]), lines = lines, canvas=canvas)
+        fig = Figure(Id="scalability", lines = lines, canvas=canvas)
         #fig.line()
         fig.bar()
 #         dic["freq"] = 100

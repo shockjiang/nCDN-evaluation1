@@ -309,6 +309,7 @@ class Figure(Manager):
         self.lines = lines
         self.canvas = canvas   
         self.kwargs = kwargs
+        self.out2 = os.path.join(OUT, self.__class__.__name__, self.Id+".pdf")
         
     def line(self):
         self.log.debug(self.Id+" begin to draw ")
@@ -335,6 +336,7 @@ class Figure(Manager):
 
         self.log.debug(self.Id+" fig save to "+self.out) 
         plt.savefig(self.out)
+        plt.savefig(self.out2)
         plt.close()
         
         self.log.info(self.Id+" ends")
@@ -383,6 +385,7 @@ class Figure(Manager):
         plt.legend(**self.canvas)
         self.log.debug(self.Id+" fig save to "+self.out) 
         plt.savefig(self.out)
+        plt.savefig(self.out2)
         plt.close()
         
         self.log.info(self.Id+" finishes")
