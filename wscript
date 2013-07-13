@@ -10,5 +10,9 @@ def build(bld):
     obj = bld.create_ns3_program('cdn-linkfail', ['ndnSIM'])
     obj.source = 'cdn-linkfail.cc'
 
+    obj = bld.create_ns3_program('cdn-latency', ['ndnSIM'])
+    obj.source = 'cdn-latency.cc'
+
+
     obj = bld.create_ns3_program('test', ['ndnSIM'])
     obj.source = 'test.cc'
