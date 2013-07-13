@@ -639,7 +639,7 @@ class God(Manager):
                 lines.append(line)
         canvas = {}
         canvas["xlabel"] = "Producer #"
-        canvas["ylabel"] = "Throughput: Frequency of Interest"
+        canvas["ylabel"] = "Throughput: Frequency of Request"
         canvas["loc"] = "upper left"
         fig = Figure(Id="scalability", lines = lines, canvas=canvas)
         #fig.line()
