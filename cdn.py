@@ -476,7 +476,7 @@ class God(Manager):
         self.zipfs = [0.99]
         self.duration = 300
         self.producerN = [5, 10, 15, 18, 20, 25, 30]
-        self.producerN = [5, 10, 15, 18, 19, 20, 25, 30]
+        self.producerN = [5, 10, 15, 18, 19, 20, 21, 25, 30]
         #self.producerN = [10, 12, 15]
         self.seeds = range(3, 9)
         self.seeds = [3]
@@ -503,7 +503,7 @@ class God(Manager):
         self.dic["multicast"] = self.multicast
         self.dic["zipfs"] = self.zipfs
         self.dic["duration"] = self.duration
-        
+        self.dic["item"] = "scalability" 
         
     def setup(self):
         self.log.info("> "+ self.Id + " setup begins")
@@ -527,7 +527,6 @@ class God(Manager):
                                 dic["zipfs"] = zipfs
                                 
                                 dic["duration"] = self.duration
-                                #dic["item"] = "scalability"
                                 Id = self.parseId(dic)
                                 case = Case(Id=Id, param=dic, **dic)
                                 cases[Id] = case
