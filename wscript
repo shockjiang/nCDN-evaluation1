@@ -13,6 +13,9 @@ def build(bld):
     obj = bld.create_ns3_program('cdn-latency', ['ndnSIM'])
     obj.source = 'cdn-latency.cc'
 
+    obj = bld.create_ns3_program('cdn-jetty', ['ndnSIM'])
+    obj.source = 'cdn-jetty.cc'
+
 
     obj = bld.create_ns3_program('test', ['ndnSIM'])
     obj.source = 'test.cc'

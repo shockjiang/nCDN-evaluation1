@@ -511,7 +511,7 @@ class God(Manager):
                             break
     
         self.log.info("< "+ self.Id + " run ends with IsError="+str(God.IsError) +\
-                      "TotalN="+str(len(cases))+" SuccessN="+str(Case.SuccessN)+ " ExsitingN="+str(Case.ExistingN) +" FailN="+str(Case.FailN))
+                      " TotalN="+str(len(cases))+" SuccessN="+str(Case.SuccessN)+ " ExsitingN="+str(Case.ExistingN) +" FailN="+str(Case.FailN))
    
        
     def __init__(self, paper):
@@ -555,7 +555,7 @@ class God(Manager):
             self.consumerClasses = ["CDNIPConsumer", "CDNConsumer"]
             self.seeds = [3]
             self.zipfs = [0.99]
-            self.producerN = [10]
+            self.producerN = [15]
             self.duration = 2
         
              
@@ -595,7 +595,7 @@ class God(Manager):
                                 dic["zipfs"] = zipfs
                                 
                                 dic["duration"] = self.duration
-                                #dic["item"] = "latency"
+                                dic["item"] = ITEM
                                 Id = self.parseId(dic)
                                 case = Case(Id=Id, param=dic, **dic)
                                 cases[Id] = case
@@ -609,7 +609,7 @@ class God(Manager):
         dic["producerN"] = 15
         dic["zipfs"] = 0.99
         dic["duration"] = self.duration
-        #dic["item"] = "lateny"
+        dic["item"] = ITEM
         func(dic)
         
     def world(self, dic={}):
@@ -687,6 +687,7 @@ if __name__=="__main__":
         av = sys.argv[i]
         if av == "--debug":
             DEBUG = True
+            IS_REFRESH = True
         elif av == "--nodebug":
             DEBUG = False
             
