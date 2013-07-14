@@ -257,30 +257,33 @@ class Stat(Manager):
         self.log.info("headers: "+ str(self.headers)) 
         for caseId in self.cases:
             case = self.cases[caseId]
-            latency = 0.0
-            hop = 0
-            rowN = 0.0
+            distN = {}
             if (case.result == False):
-                latency = -1
-                hop = -1
-                rowN = 1
+                distN["-2"] = -2
             else:
                 fin = open(case.trace)
+                
                 for line in fin.readlines():
                     line = line.strip()
                     if line == "" or line.startswith("#") or line.startswith("Time"):
                         continue
                     cols = line.split()
-                    latency += float(cols[6])
-                    reTx = int(cols[7])
-                    hop += int(cols[8])
-                    rowN += 1.0
-                    if (reTx >1):
-                        print line
+                    kind = cols[4]
+                    if kind == "LastDelay":
+                        continue
                     
+                    latency = round(float(cols[6])/1000)
+                    
+                    if latency in distN:
+                        distN[latency] += 1
+                    else:
+                        distN[latency] = 1
+                    
+                    rowN += 1.0
                     
                 fin.close()
-                self.data[case.Id] = [rowN, latency/rowN, hop/rowN]
+                #self.data[case.Id] = [rowN, latency/rowN, hop/rowN]
+                self.data[case.Id] = [distN.keys(), distN.values()]
                 
                 self.log.debug(caseId+": "+str(self.data[case.Id]))
     #------------- to be overloade ----------------------            
@@ -357,11 +360,17 @@ class Dot():
         self.y = y  
         
 class Line(Manager):
-    def __init__(self, dots, plt={}, **kwargs):
+    def __init__(self, dots=None, xs=None, ys=None, plt={}, **kwargs):
         #for dot in dots:
-        dotN = len(dots)
-        self.xs = [dots[i].x for i in range(dotN)]
-        self.ys = [dots[i].y for i in range(dotN)]
+        if dots != None:
+            dotN = len(dots)
+            self.xs = [dots[i].x for i in range(dotN)]
+            self.ys = [dots[i].y for i in range(dotN)]
+        else:
+            dotN = len(xs)
+            self.xs = xs
+            self.ys = ys
+            
         self.plt = plt
         
 class Figure(Manager):
@@ -572,7 +581,8 @@ class God(Manager):
         self.dic["zipfs"] = self.zipfs
         self.dic["item"] = ITEM
         self.dic["duration"] = self.duration
-        headers = ["rowN", "latency", "hop"]
+        
+        headers = ["latency", "count"]
         self.stat = Stat(Id=self.parseId(self.dic), cases=self.cases, headers=headers)
         
     
@@ -635,44 +645,27 @@ class God(Manager):
                 
                     for freq in self.freqs:
                         dic["freq"] = freq  
-                        
                         Id = self.parseId(dic)
-                        x = freq/10
-                        y = self.stat.get(Id, "hop")
                         
-                        dot = Dot(x=x, y=y)
-                    
-                        dots.append(dot)
+                        if consumerClass == "CDNConsumer":
+                           label = "NDN"
+                           color = "y"
+                        else:
+                            label = "IP"
+                            color = "b"
                         
-                        y = self.stat.get(Id, "latency")
-                        
-                        dot = Dot(x=x, y=y)
-                        dots2.append(dot)
-                
-                if consumerClass == "CDNConsumer":
-                   label = "NDN"
-                   color = "y"
-                else:
-                    label = "IP"
-                    if multicast == "true":
-                        label += " with Multicast"
-                    color = "b"
-                plt = {}
-                plt["color"] = color
-                plt["label"] = label
-                #plt={"color":"b", "style":"o--", "label":"Impact of Interest Set"}
-                line = Line(dots = dots, plt=plt)
-                lines.append(line)
-                line = Line(dots= dots2, plt=plt)
-                lines2.append(line)
-                
+                        plt = {}
+                        plt["color"] = color
+                        plt["label"] = label
+                        line = Line(xs=self.stat.get(Id, "latency"), ys=self.stat.get(Id, "count"), plt=plt)
+                        lines.append(line)
         canvas = {}
-        canvas["xlabel"] = "Frequency of Request (x10)"
-        canvas["ylabel"] = "Average Hop Distance"
+        canvas["xlabel"] = "Latency (MS)"
+        canvas["ylabel"] = "Request #"
         canvas["loc"] = "upper left"
         fig = Figure(Id=ITEM, lines = lines, canvas=canvas)
-        #fig.line()
-        fig.bar()
+        fig.line()
+        #fig.bar()
 #         
 #         canvas["xlabel"] = "Frequency of Request (x10)"
 #         canvas["ylabel"] = "Latency (US)"
@@ -691,7 +684,6 @@ if __name__=="__main__":
         av = sys.argv[i]
         if av == "--debug":
             DEBUG = True
-            #IS_REFRESH = True
         elif av == "--nodebug":
             DEBUG = False
             
