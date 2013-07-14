@@ -43,9 +43,9 @@ LOG_LEVEL = logging.DEBUG
 ALLOWED_CLASS_LI = None #default is None, which means all logger should be allowed, else give a list of allowed logger; but ["Figure"] is OK
 #------------------------------
 
-ITEM = "latency"
+ITEM = "jetty"
 PAPER = "cdn-over-ip"
-SCRIPT = "cdn-latency"
+SCRIPT = "cdn-jetty"
 
 #************** Global Settings ****************************************
 
@@ -272,8 +272,12 @@ class Stat(Manager):
                         continue
                     cols = line.split()
                     latency += float(cols[6])
+                    reTx = int(cols[7])
                     hop += int(cols[8])
                     rowN += 1.0
+                    if (reTx >1):
+                        print line
+                    
                     
                 fin.close()
                 self.data[case.Id] = [rowN, latency/rowN, hop/rowN]
@@ -555,7 +559,7 @@ class God(Manager):
             self.consumerClasses = ["CDNIPConsumer", "CDNConsumer"]
             self.seeds = [3]
             self.zipfs = [0.99]
-            self.producerN = [15]
+            self.producerN = [10]
             self.duration = 2
         
              
@@ -666,16 +670,16 @@ class God(Manager):
         canvas["xlabel"] = "Frequency of Request (x10)"
         canvas["ylabel"] = "Average Hop Distance"
         canvas["loc"] = "upper left"
-        fig = Figure(Id="qos-hop", lines = lines, canvas=canvas)
+        fig = Figure(Id=ITEM, lines = lines, canvas=canvas)
         #fig.line()
         fig.bar()
-        
-        canvas["xlabel"] = "Frequency of Request (x10)"
-        canvas["ylabel"] = "Latency (US)"
-        canvas["loc"] = "upper left"
-        fig = Figure(Id="qos-latency", lines = lines2, canvas=canvas)
-        #fig.line()
-        fig.bar()
+#         
+#         canvas["xlabel"] = "Frequency of Request (x10)"
+#         canvas["ylabel"] = "Latency (US)"
+#         canvas["loc"] = "upper left"
+#         fig = Figure(Id=ITEM, lines = lines2, canvas=canvas)
+#         #fig.line()
+#         fig.bar()
 
     
 
@@ -687,7 +691,7 @@ if __name__=="__main__":
         av = sys.argv[i]
         if av == "--debug":
             DEBUG = True
-            IS_REFRESH = True
+            #IS_REFRESH = True
         elif av == "--nodebug":
             DEBUG = False
             

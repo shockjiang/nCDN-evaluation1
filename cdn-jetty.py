@@ -666,16 +666,16 @@ class God(Manager):
         canvas["xlabel"] = "Frequency of Request (x10)"
         canvas["ylabel"] = "Average Hop Distance"
         canvas["loc"] = "upper left"
-        fig = Figure(Id="qos-hop", lines = lines, canvas=canvas)
+        fig = Figure(Id=ITEM, lines = lines, canvas=canvas)
         #fig.line()
         fig.bar()
-        
-        canvas["xlabel"] = "Frequency of Request (x10)"
-        canvas["ylabel"] = "Latency (US)"
-        canvas["loc"] = "upper left"
-        fig = Figure(Id="qos-latency", lines = lines2, canvas=canvas)
-        #fig.line()
-        fig.bar()
+#         
+#         canvas["xlabel"] = "Frequency of Request (x10)"
+#         canvas["ylabel"] = "Latency (US)"
+#         canvas["loc"] = "upper left"
+#         fig = Figure(Id=ITEM, lines = lines2, canvas=canvas)
+#         #fig.line()
+#         fig.bar()
 
     
 
