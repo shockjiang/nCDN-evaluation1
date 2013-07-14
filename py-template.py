@@ -191,7 +191,7 @@ class Stat(Manager):
         index = self.headers.index(key)
         
         if isinstance(self.data[caseId][0], list): #self.data[caseId]= [['time', 'value'],[1,'a'],[2,'b']]
-            li = []
+            li = []                                  #                [[1,100], [2, 150], [3, 101]]  ["latency", "count"] 
             for liv in self.data[caseId]:
                 li.append(liv[index])
             return li
@@ -214,7 +214,13 @@ class Stat(Manager):
                 caseId = cols[0]
                 
                 li = [float(cols[i]) for i in range(1, len(cols))]
-                self.data[caseId] = li
+                if caseId in self.data:
+                    if isinstance(self.data[caseId][0], list):
+                        self.data[caseId].append(li)
+                    else:
+                        self.data[caseId] = [self.data[caseId]]
+                else:
+                    self.data[caseId] = li
                 self.log.debug("column:" + line)
         self.log.info(self.Id+" get data from file")     
        
@@ -230,12 +236,21 @@ class Stat(Manager):
         #fout.write(line)
         for caseId in self.data:
             li = self.data[caseId]
-            line = caseId
-            for col in li:
-                line += "\t" + str(col)
-            line += "\n"
-            self.log.debug("write data: "+str(line)) 
-            fout.write(line)
+            if isinstance(li[0], list):
+                for il in li:
+                    line = caseId
+                    for col in il:
+                        line += "\t" + str(col)
+                    line += "\n"
+                    self.log.debug("write data: "+str(line)) 
+                    fout.write(line)    
+            else:
+                line = caseId
+                for col in li:
+                    line += "\t" + str(col)
+                line += "\n"
+                self.log.debug("write data: "+str(line)) 
+                fout.write(line)
         fout.flush()
         fout.close()
         self.log.info(self.Id+" write data to file")
@@ -272,19 +287,25 @@ class Stat(Manager):
                     if kind == "LastDelay":
                         continue
                     
-                    latency = round(float(cols[6])/1000)
+                    latency = round(float(cols[6])/10000)
                     
                     if latency in distN:
                         distN[latency] += 1
                     else:
                         distN[latency] = 1
                     
-                    rowN += 1.0
-                    
                 fin.close()
                 #self.data[case.Id] = [rowN, latency/rowN, hop/rowN]
-                self.data[case.Id] = [distN.keys(), distN.values()]
-                
+                self.data[case.Id] = []
+                keys = distN.keys()
+                keys.sort()
+                sum = 0
+                for key in keys:
+                    sum += distN[key]
+                    self.data[case.Id].append([key, sum])
+                for li in self.data[case.Id]:
+                    li[1] = li[1]/float(sum)
+                    
                 self.log.debug(caseId+": "+str(self.data[case.Id]))
     #------------- to be overloade ----------------------            
                 
@@ -568,7 +589,7 @@ class God(Manager):
             self.consumerClasses = ["CDNIPConsumer", "CDNConsumer"]
             self.seeds = [3]
             self.zipfs = [0.99]
-            self.producerN = [10]
+            self.producerN = [15]
             self.duration = 2
         
              
@@ -662,7 +683,7 @@ class God(Manager):
         canvas = {}
         canvas["xlabel"] = "Latency (MS)"
         canvas["ylabel"] = "Request #"
-        canvas["loc"] = "upper left"
+        canvas["loc"] = "lower right"
         fig = Figure(Id=ITEM, lines = lines, canvas=canvas)
         fig.line()
         #fig.bar()
