@@ -585,7 +585,7 @@ class God(Manager):
         canvas = {}
         canvas["loc"] = "upper left"
         canvas["xlabel"] = "Time (Second)"
-        canvas["ylabel"] = "Unsatisfied Request # (x100)"
+        canvas["ylabel"] = "Unsatisfied Requests # (x$10^2$)"
         fig = Figure(Id="reliabiltiy-link", lines=lines, canvas=canvas)
         #fig.bar()
         fig.line()

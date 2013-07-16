@@ -675,14 +675,14 @@ class God(Manager):
                 
         canvas = {}
         canvas["xlabel"] = "Frequency of Request (x10)"
-        canvas["ylabel"] = "Satisfied Requests # (x100000)"
+        canvas["ylabel"] = "Satisfied Requests # (x$10^6$)"
         canvas["loc"] = "upper left"
         fig = Figure(Id="qos-bandwidth", lines = lines, canvas=canvas)
         #fig.line()
         fig.bar()
         
-        canvas["xlabel"] = "Frequency of Interest (x10)"
-        canvas["ylabel"] = "Dropped Packet # (x100000)"
+        canvas["xlabel"] = "Frequency of Request (x10)"
+        canvas["ylabel"] = "Dropped Packet # (x$10^6$)"
         canvas["loc"] = "upper left"
         fig = Figure(Id="qos-loss", lines = lines2, canvas=canvas)
         #fig.line()

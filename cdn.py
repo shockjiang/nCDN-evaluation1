@@ -638,8 +638,8 @@ class God(Manager):
                 line = Line(dots = dots, plt=plt)
                 lines.append(line)
         canvas = {}
-        canvas["xlabel"] = "Producer #"
-        canvas["ylabel"] = "Throughput: Frequency of Request"
+        canvas["xlabel"] = "Surrogates #"
+        canvas["ylabel"] = "Bottleneck Frequency of Request"
         canvas["loc"] = "upper left"
         fig = Figure(Id="scalability", lines = lines, canvas=canvas)
         #fig.line()

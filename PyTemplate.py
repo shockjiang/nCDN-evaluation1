@@ -421,13 +421,10 @@ class Figure(Manager):
         plt.grid(True)        
         plt.xlabel(self.canvas.pop("xlabel", " "))
         plt.ylabel(self.canvas.pop("ylabel", " "))    
+        plt.xlim(xmax=self.canvas.pop("xmax", None))
         plt.legend(**self.canvas)
         
-        plt.plot([5], [0], 'o')
-        plt.annotate('Key Node is Down', xy=(5,0), xytext=(4, 500),
-                     arrowprops=dict(facecolor='black', shrink=0.05))
         
-
         if HOSTOS.startswith("Darwin"):
             plt.savefig(self.out)
             plt.savefig(self.out2)
@@ -664,7 +661,7 @@ class God(Manager):
                 for producerN in self.producerN:
                     dic["producerN"] = producerN
                 
-                    for freq in self.freqs:
+                    for freq in [150]:#self.freqs:
                         dic["freq"] = freq  
                         Id = self.parseId(dic)
                         
@@ -674,16 +671,18 @@ class God(Manager):
                         else:
                             label = "IP"
                             color = "b"
-                        
+                        #label += ": Frequency="+str(freq)
                         plt = {}
                         plt["color"] = color
                         plt["label"] = label
-                        line = Line(xs=self.stat.get(Id, "latency"), ys=self.stat.get(Id, "count"), plt=plt)
+                        xs = [x/10.0 for x in self.stat.get(Id, "latency")]
+                        line = Line(xs=xs, ys=self.stat.get(Id, "count"), plt=plt)
                         lines.append(line)
         canvas = {}
-        canvas["xlabel"] = "Latency (MS)"
-        canvas["ylabel"] = "Request #"
+        canvas["xlabel"] = "Latency (x$10^2$ MS)"
+        canvas["ylabel"] = "CDF of Request #"
         canvas["loc"] = "lower right"
+        canvas["xmax"] = 10
         fig = Figure(Id=ITEM, lines = lines, canvas=canvas)
         fig.line()
         #fig.bar()

@@ -6,7 +6,7 @@ HOSTOS = platform.system()
 import matplotlib
 matplotlib.use('Agg')
 matplotlib.rcParams["font.size"] = 21
-matplotlib.rcParams["xtick.labelsize"] = 16
+matplotlib.rcParams["xtick.labelsize"] = 18
 matplotlib.rcParams["lines.linewidth"] = 3.0
 matplotlib.rcParams["pdf.fonttype"] = 42
 import matplotlib.pyplot as plt
@@ -43,9 +43,9 @@ LOG_LEVEL = logging.DEBUG
 ALLOWED_CLASS_LI = None #default is None, which means all logger should be allowed, else give a list of allowed logger; but ["Figure"] is OK
 #------------------------------
 
-ITEM = "latency"
+ITEM = "jetty"
 PAPER = "cdn-over-ip"
-SCRIPT = "cdn-latency"
+SCRIPT = "cdn-jetty"
 
 #************** Global Settings ****************************************
 
@@ -105,7 +105,8 @@ class Manager:
             outType = "." + outType
         self.out = os.path.join(self.out, self.Id+outType)
     
-    
+    def toRefresh(self):
+        return (not self.isRefresh) and os.path.exists(self.out)
     
     def parseId(self, dic):
         """ construct the Id from attributes held in dic, attributes, such us id, trace are ignored
@@ -191,7 +192,7 @@ class Stat(Manager):
         index = self.headers.index(key)
         
         if isinstance(self.data[caseId][0], list): #self.data[caseId]= [['time', 'value'],[1,'a'],[2,'b']]
-            li = []
+            li = []                                  #                [[1,100], [2, 150], [3, 101]]  ["latency", "count"] 
             for liv in self.data[caseId]:
                 li.append(liv[index])
             return li
@@ -214,7 +215,13 @@ class Stat(Manager):
                 caseId = cols[0]
                 
                 li = [float(cols[i]) for i in range(1, len(cols))]
-                self.data[caseId] = li
+                if caseId in self.data:
+                    if isinstance(self.data[caseId][0], list):
+                        self.data[caseId].append(li)
+                    else:
+                        self.data[caseId] = [self.data[caseId]]
+                else:
+                    self.data[caseId] = li
                 self.log.debug("column:" + line)
         self.log.info(self.Id+" get data from file")     
        
@@ -230,12 +237,21 @@ class Stat(Manager):
         #fout.write(line)
         for caseId in self.data:
             li = self.data[caseId]
-            line = caseId
-            for col in li:
-                line += "\t" + str(col)
-            line += "\n"
-            self.log.debug("write data: "+str(line)) 
-            fout.write(line)
+            if isinstance(li[0], list):
+                for il in li:
+                    line = caseId
+                    for col in il:
+                        line += "\t" + str(col)
+                    line += "\n"
+                    self.log.debug("write data: "+str(line)) 
+                    fout.write(line)    
+            else:
+                line = caseId
+                for col in li:
+                    line += "\t" + str(col)
+                line += "\n"
+                self.log.debug("write data: "+str(line)) 
+                fout.write(line)
         fout.flush()
         fout.close()
         self.log.info(self.Id+" write data to file")
@@ -243,7 +259,7 @@ class Stat(Manager):
         
     def stat(self):
         self.log.info("> Stat: "+self.Id+" begins")
-        if not self.isRefresh and os.path.exists(self.out):#read data from existing result
+        if not self.toRefresh:#read data from existing result
             self.read()
         else:   #read and stat the case.out
             self.obtain() #get data from raw output
@@ -252,33 +268,7 @@ class Stat(Manager):
     
     #------------- to be overloade ----------------------
     def obtain(self):
-        ''' get data from raw output data
-        '''
-        self.log.info("headers: "+ str(self.headers)) 
-        for caseId in self.cases:
-            case = self.cases[caseId]
-            latency = 0.0
-            hop = 0
-            rowN = 0.0
-            if (case.result == False):
-                latency = -1
-                hop = -1
-                rowN = 1
-            else:
-                fin = open(case.trace)
-                for line in fin.readlines():
-                    line = line.strip()
-                    if line == "" or line.startswith("#") or line.startswith("Time"):
-                        continue
-                    cols = line.split()
-                    latency += float(cols[6])
-                    hop += int(cols[8])
-                    rowN += 1.0
-                    
-                fin.close()
-                self.data[case.Id] = [rowN, latency/rowN, hop/rowN]
-                
-                self.log.debug(caseId+": "+str(self.data[case.Id]))
+        pass
     #------------- to be overloade ----------------------            
                 
 class Case(Manager, threading.Thread):
@@ -320,7 +310,7 @@ class Case(Manager, threading.Thread):
         #Case.LiveN += 1
         self.log.info("> " +self.Id+" begins TotalN/LiveN/SuccessN/ExistingN/FailN=%d/%d/%d/%d/%d" \
                       %(Case.TotalN, Case.LiveN, Case.SuccessN, Case.ExistingN, Case.FailN))
-        if (not self.isRefresh) and os.path.exists(self.out):
+        if not self.toRefresh():
             Case.ExistingN += 1
             self.result = True
             pass
@@ -353,11 +343,17 @@ class Dot():
         self.y = y  
         
 class Line(Manager):
-    def __init__(self, dots, plt={}, **kwargs):
+    def __init__(self, dots=None, xs=None, ys=None, plt={}, **kwargs):
         #for dot in dots:
-        dotN = len(dots)
-        self.xs = [dots[i].x for i in range(dotN)]
-        self.ys = [dots[i].y for i in range(dotN)]
+        if dots != None:
+            dotN = len(dots)
+            self.xs = [dots[i].x for i in range(dotN)]
+            self.ys = [dots[i].y for i in range(dotN)]
+        else:
+            dotN = len(xs)
+            self.xs = xs
+            self.ys = ys
+            
         self.plt = plt
         
 class Figure(Manager):
@@ -387,13 +383,11 @@ class Figure(Manager):
         plt.grid(True)        
         plt.xlabel(self.canvas.pop("xlabel", " "))
         plt.ylabel(self.canvas.pop("ylabel", " "))    
+        plt.xlim(xmax=self.canvas.pop("xmax", None))
+        
+        self.extend(plt)#extend line
+        
         plt.legend(**self.canvas)
-        
-        plt.plot([5], [0], 'o')
-        plt.annotate('Key Node is Down', xy=(5,0), xytext=(4, 500),
-                     arrowprops=dict(facecolor='black', shrink=0.05))
-        
-
         if HOSTOS.startswith("Darwin"):
             plt.savefig(self.out)
             plt.savefig(self.out2)
@@ -402,31 +396,28 @@ class Figure(Manager):
         
         self.log.info(self.Id+" ends")
     
+    def extend(self, plt): #extend line
+        pass
     
     def bar(self):
         self.log.debug(self.Id+" begin to draw ")
         plt.clf()
         
-        plt.xticks([i+0.3 for i in range(6)], ("Transmission Time", "Hops", "Data Recieved"))
         self.bars = []
         Width = self.canvas.pop("width", 0.2)
-        i = 0
         for line in self.lines:
-            xs = [j+Width * i for j in line.xs]
-            print "line.xs=",xs
+            print "line.xs=",line.xs
             print "line.ys=", line.ys
             #print "xs=",xs       
-            bar = plt.bar(left=xs, height=line.ys, width=Width, bottom=0, **line.plt)
+            bar = plt.bar(left=line.xs, height=line.ys, width=Width, bottom=0, **line.plt)
             self.bars.append(bar)
             i += 1
         #plt.legend( (p1[0], p2[0]), ('Men', 'Women') )
-        plt.ylim(ymax=self.canvas.pop("ymax", None))
         
         plt.legend((self.bars[i][0] for i in range(len(self.lines))), (self.lines[i].plt["label"] for i in range(len(self.lines))))
         #for bar in self.bars:
         
         xs = [Width * len(self.lines)/2 + j for j in line.xs]
-        #print xs
         plt.xticks(xs, line.xs)
                 
         plt.grid(True)
@@ -434,6 +425,8 @@ class Figure(Manager):
         plt.ylabel(self.canvas.pop("ylabel", " "))    
         plt.legend(**self.canvas)
         plt.title(self.canvas.pop("title", " "))
+        
+        self.extend(plt)
         
         plt.legend(**self.canvas)
         if HOSTOS.startswith("Darwin"):
@@ -512,7 +505,7 @@ class God(Manager):
                             break
     
         self.log.info("< "+ self.Id + " run ends with IsError="+str(God.IsError) +\
-                      "TotalN="+str(len(cases))+" SuccessN="+str(Case.SuccessN)+ " ExsitingN="+str(Case.ExistingN) +" FailN="+str(Case.FailN))
+                      " TotalN="+str(len(cases))+" SuccessN="+str(Case.SuccessN)+ " ExsitingN="+str(Case.ExistingN) +" FailN="+str(Case.FailN))
    
        
     def __init__(self, paper):
@@ -524,6 +517,7 @@ class God(Manager):
         global OUT
         OUT = os.path.join(OUT, paper)
         Manager.__init__(self, Id="GOD")
+        self.cases = {}
         
 #         dir = os.path.split(os.path.realpath(__file__))[0]
 #         os.chdir(dir)
@@ -531,156 +525,58 @@ class God(Manager):
 #         os.chdir(dir)
 
         #------------- to be overloade ----------------------            
-        self.cases = {}
         
-        Min_Freq = 40
-        #Min_Freq = 100
-        Max_Freq = 200
-        Step = 10
-        self.freqs = range(Min_Freq, Max_Freq+Step, Step)
-        #self.freqs = [100, 110]
+        
+        self.freq = range(40, 210, 10)
         self.zipfs = [0.99, 0.92, 1.04]
-        self.zipfs = [0.99]
-        self.duration = 30
-        self.producerN = [5, 10, 15, 18, 20, 25, 30]
+        self.duration = 300
+        self.retxN = 3
         self.producerN = [5, 10, 15, 18, 19, 20, 25, 30]
-        self.producerN = [15]
-        self.seeds = range(3, 9)
-        self.seeds = [3]
+        self.RngRun = range(3, 6)
         self.multicast = ["false", "true"]
-        self.consumerClasses = ["CDNConsumer", "CDNIPConsumer"]
-        #self.consumerClasses = ["CDNConsumer"]
-            
+        self.consumerClass = ["CDNConsumer", "CDNIPConsumer"]
+        
         if DEBUG:
-            self.freqs = [100]
-            self.consumerClasses = ["CDNIPConsumer", "CDNConsumer"]
-            self.seeds = [3]
+            self.freq = [100, 110]
             self.zipfs = [0.99]
-            self.producerN = [10]
+            self.RngRun = [3]
+            self.producerN = [15]
             self.duration = 2
         
-             
-        self.dic = {}
-        self.dic["freqs"] = self.freqs
-        self.dic["consumerClasses"] = self.consumerClasses
-        self.dic["RngRun"] = self.seeds
-        self.dic["producerN"] = self.producerN
-        self.dic["multicast"] = self.multicast
-        self.dic["zipfs"] = self.zipfs
-        self.dic["item"] = ITEM
-        self.dic["duration"] = self.duration
-        headers = ["rowN", "latency", "hop"]
-        self.stat = Stat(Id=self.parseId(self.dic), cases=self.cases, headers=headers)
+        dic = {}
+        dic["freq"] = self.freq
+        dic["consumerClass"] = self.consumerClass
+        dic["RngRun"] = self.RngRun
+        dic["producerN"] = self.producerN
+        dic["multicast"] = self.multicast
+        dic["zipfs"] = self.zipfs
+        dic["item"] = ITEM
+        dic["duration"] = self.duration
+        dic["retxN"] = self.retxN
+        self.dic = dic
         
+#         
+#         headers = ["latency", "count"]
+#         self.stat = Stat(Id=self.parseId(dic), cases=self.cases, headers=headers)
+#         
     
     def setup(self):
-        cases = self.cases
-        self.log.info("> "+ self.Id + " setup begins")
-        cases = self.cases
-        for freq in self.freqs:
-            dic = {}
-            dic["freq"] = freq
-            for consumer in self.consumerClasses:
-                dic["consumerClass"] = consumer
-                for seed in self.seeds:
-                    dic["RngRun"] = seed
-                    for producerN in self.producerN:
-                        dic["producerN"] = producerN
-                        for multicast in self.multicast:
-                            dic["multicast"] = multicast
-                            if consumer == "CDNConsumer" and multicast == "false":
-                                continue
-                            if consumer == "CDNIPConsumer" and multicast == "true":
-                                continue
-                            for zipfs in self.zipfs:
-                                dic["zipfs"] = zipfs
-                                
-                                dic["duration"] = self.duration
-                                #dic["item"] = "latency"
-                                Id = self.parseId(dic)
-                                case = Case(Id=Id, param=dic, **dic)
-                                cases[Id] = case
-            self.log.info("> "+ self.Id + " setup ends")
+        pass
     
     def create(self, func):
-        self.stat.stat()
-        
-        dic = {}        
-        dic["RngRun"] = 3
-        dic["producerN"] = 15
-        dic["zipfs"] = 0.99
-        dic["duration"] = self.duration
-        #dic["item"] = "lateny"
-        func(dic)
-        
-    def world(self, dic={}):
-        lines = []
-        lines2 = []
-         
-        for multicast in self.multicast:
-            dic["multicast"] = multicast
-            for consumerClass in self.consumerClasses: 
-                dic["consumerClass"] = consumerClass
-                if consumerClass == "CDNIPConsumer" and multicast == "true":
-                    continue
-                if consumerClass == "CDNConsumer" and multicast == "false":
-                    continue
-                dots = []
-                dots2 = []
-                for producerN in self.producerN:
-                    dic["producerN"] = producerN
-                
-                    for freq in self.freqs:
-                        dic["freq"] = freq  
-                        
-                        Id = self.parseId(dic)
-                        x = freq/10
-                        y = self.stat.get(Id, "hop")
-                        
-                        dot = Dot(x=x, y=y)
-                    
-                        dots.append(dot)
-                        
-                        y = self.stat.get(Id, "latency")/10000
-                        
-                        dot = Dot(x=x, y=y)
-                        dots2.append(dot)
-                
-                if consumerClass == "CDNConsumer":
-                   label = "NDN"
-                   color = "y"
-                else:
-                    label = "IP"
-                    if multicast == "true":
-                        label += " with Multicast"
-                    color = "b"
-                plt = {}
-                plt["color"] = color
-                plt["label"] = label
-                #plt={"color":"b", "style":"o--", "label":"Impact of Interest Set"}
-                line = Line(dots = dots, plt=plt)
-                lines.append(line)
-                line = Line(dots= dots2, plt=plt)
-                lines2.append(line)
-                
-        canvas = {}
-        canvas["xlabel"] = "Frequency of Request (x10)"
-        canvas["ylabel"] = "Average Hop Distance"
-        canvas["loc"] = "upper left"
-        canvas["ymax"] = 12
-        fig = Figure(Id="qos-hop", lines = lines, canvas=canvas)
-        #fig.line()
-        fig.bar()
-        
-        
-        canvas["xlabel"] = "Frequency of Request (x10)"
-        canvas["ylabel"] = "Latency (x10 MS)"
-        canvas["loc"] = "upper left"
-        fig = Figure(Id="qos-latency", lines = lines2, canvas=canvas)
-        #fig.line()
-        fig.bar()
-
+        for RngRun in self.RngRun:
+            for zipfs in self.zipfs:
+                dic = {}
+                dic["RngRun"] = RngRun
+                dic["zipfs"] = zipfs
+                dic["duration"] = self.duration
+                dic["item"] = ITEM
+                dic["retxN"] = self.retxN
+                dic["debug"] = "true"
+                func(dic)
     
+    def world(self, dic={}):
+        pass
 
 if __name__=="__main__":
     #cmd = "./waf --run 'shock-test  --ratetrf=shock/output/Case/ist-set.rate'>output/Case/ist-set.output 2>&1"
