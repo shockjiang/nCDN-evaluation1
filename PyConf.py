@@ -578,7 +578,7 @@ class God(Manager):
                 dic["duration"] = self.duration
                 dic["item"] = ITEM
                 
-                dic["debug"] = "true"
+                #dic["debug"] = "true"
                 func(dic)
     
     def world(self, dic={}):
