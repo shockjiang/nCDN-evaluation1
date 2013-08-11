@@ -489,11 +489,16 @@ int main (int argc, char *argv[])
 
 
   Simulator::Stop(Seconds(duration));
-  string s = "examples/shock/output/cdn-over-ip/Case/latency-"+id+".txt";
+  string root = "examples/shock/output-debug/cdn-over-ip//Case/";
+  string s = root + id + "-latency" + ".txt";
+
+  //string s = "examples/shock/output/cdn-over-ip/Case/latency-"+id+".txt";
     boost::tuple< boost::shared_ptr<std::ostream>, std::list<Ptr<ndn::AppDelayTracer> > >
     tracers = ndn::AppDelayTracer::InstallAll (s);
 
-    s = "examples/shock/output/cdn-over-ip/Case/jetty-"+id+".txt";
+
+    //s = "examples/shock/output/cdn-over-ip/Case/jetty-"+id+".txt";
+    s = root + id + "-jetty.txt";
     fnew.open(s.c_str());
     fnew<<"Time\tNode\tAppid\tSeq"<<endl;
 

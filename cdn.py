@@ -606,6 +606,8 @@ class God(Manager):
                 dots = []
                 
                 for producerN in self.producerN:
+                    if producerN > 22:
+                        continue
                     dic["producerN"] = producerN
                     
                     y = self.freqs[0]
@@ -624,12 +626,10 @@ class God(Manager):
                     dots.append(dot)
                 
                 if consumerClass == "CDNConsumer":
-                   label = "NDN"
+                   label = "nCDN"
                    color = "y"
                 else:
-                    label = "IP"
-                    if multicast == "true":
-                        label += " with Multicast"
+                    label = "Traditional CDN"
                     color = "b"
                 plt = {}
                 plt["color"] = color
@@ -638,8 +638,8 @@ class God(Manager):
                 line = Line(dots = dots, plt=plt)
                 lines.append(line)
         canvas = {}
-        canvas["xlabel"] = "Surrogates #"
-        canvas["ylabel"] = "Bottleneck Frequency of Request"
+        canvas["xlabel"] = "Content Hosting Surrogates #"
+        canvas["ylabel"] = "Bottleneck Frequency of Requests"
         canvas["loc"] = "upper left"
         fig = Figure(Id="scalability", lines = lines, canvas=canvas)
         #fig.line()

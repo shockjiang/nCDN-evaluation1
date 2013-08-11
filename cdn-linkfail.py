@@ -569,12 +569,10 @@ class God(Manager):
             
             plt = {}
             if case.param["consumerClass"] == "CDNConsumer":
-                label = "NDN"
+                label = "nCDN"
                 color = "y"
             elif  case.param["consumerClass"] == "CDNIPConsumer":
-                label = "IP"
-                if case.param["multicast"] == "true":
-                    label += " with Multicast"
+                label = "Traditional CDN"
                 color = "b"
             self.log.debug("consumerClass="+case.param["consumerClass"]+" multicast="+case.param["multicast"])
             plt["label"] = label

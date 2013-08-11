@@ -652,10 +652,12 @@ class God(Manager):
             dic["multicast"] = multicast
             for consumerClass in self.consumerClasses: 
                 dic["consumerClass"] = consumerClass
+                print consumerClass, multicast
                 if consumerClass == "CDNIPConsumer" and multicast == "true":
                     continue
                 if consumerClass == "CDNConsumer" and multicast == "false":
                     continue
+                
                 dots = []
                 dots2 = []
                 for producerN in self.producerN:
@@ -666,10 +668,10 @@ class God(Manager):
                         Id = self.parseId(dic)
                         
                         if consumerClass == "CDNConsumer":
-                           label = "NDN"
+                           label = "nCDN"
                            color = "y"
                         else:
-                            label = "IP"
+                            label = "Traditional CDN"
                             color = "b"
                         #label += ": Frequency="+str(freq)
                         plt = {}
@@ -680,7 +682,7 @@ class God(Manager):
                         lines.append(line)
         canvas = {}
         canvas["xlabel"] = "Latency (x$10^2$ MS)"
-        canvas["ylabel"] = "CDF of Request #"
+        canvas["ylabel"] = "CDF of Requests #"
         canvas["loc"] = "lower right"
         canvas["xmax"] = 10
         fig = Figure(Id=ITEM, lines = lines, canvas=canvas)

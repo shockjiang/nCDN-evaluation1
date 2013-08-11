@@ -106,13 +106,15 @@ class Manager:
         self.out = os.path.join(self.out, self.Id+outType)
     
     def toRefresh(self):
-        return (not self.isRefresh) and os.path.exists(self.out)
-    
+        
+        #return not ((not self.isRefresh) and os.path.exists(self.out))
+        return self.isRefresh or (not os.path.exists(self.out))
+     
     def parseId(self, dic):
         """ construct the Id from attributes held in dic, attributes, such us id, trace are ignored
         
         """
-        Id = ""
+        Id = SCRIPT
         keys = dic.keys()
         keys.sort()
         for k in keys:
@@ -289,7 +291,7 @@ class Case(Manager, threading.Thread):
         
         self.setDaemon(False)
         self.result = None
-        self.trace = os.path.join(OUT, self.__class__.__name__, "latency-"+self.Id+".txt")
+        self.trace = os.path.join(OUT, self.__class__.__name__, self.Id+"-latency"+".txt")
         
         self.cmd = "./waf --run \'" +SCRIPT
         self.param = param
@@ -405,13 +407,15 @@ class Figure(Manager):
         
         self.bars = []
         Width = self.canvas.pop("width", 0.2)
-        for line in self.lines:
+        for i in range(len(self.lines)):
+            line = self.lines[i]
+        #for line in self.lines:
             print "line.xs=",line.xs
             print "line.ys=", line.ys
-            #print "xs=",xs       
-            bar = plt.bar(left=line.xs, height=line.ys, width=Width, bottom=0, **line.plt)
+            xs = [x+i*Width for x in line.xs]
+            bar = plt.bar(left=xs, height=line.ys, width=Width, bottom=0, **line.plt)
             self.bars.append(bar)
-            i += 1
+            
         #plt.legend( (p1[0], p2[0]), ('Men', 'Women') )
         
         plt.legend((self.bars[i][0] for i in range(len(self.lines))), (self.lines[i].plt["label"] for i in range(len(self.lines))))
@@ -516,6 +520,8 @@ class God(Manager):
         self.t0 = time.time()
         global OUT
         OUT = os.path.join(OUT, paper)
+        
+        
         Manager.__init__(self, Id="GOD")
         self.cases = {}
         
@@ -537,7 +543,7 @@ class God(Manager):
         self.consumerClass = ["CDNConsumer", "CDNIPConsumer"]
         
         if DEBUG:
-            self.freq = [100, 110]
+            self.freq = [100, 110, 120]
             self.zipfs = [0.99]
             self.RngRun = [3]
             self.producerN = [15]
@@ -571,7 +577,7 @@ class God(Manager):
                 dic["zipfs"] = zipfs
                 dic["duration"] = self.duration
                 dic["item"] = ITEM
-                dic["retxN"] = self.retxN
+                
                 dic["debug"] = "true"
                 func(dic)
     

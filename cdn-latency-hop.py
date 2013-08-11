@@ -647,12 +647,10 @@ class God(Manager):
                         dots2.append(dot)
                 
                 if consumerClass == "CDNConsumer":
-                   label = "NDN"
+                   label = "nCDN"
                    color = "y"
                 else:
-                    label = "IP"
-                    if multicast == "true":
-                        label += " with Multicast"
+                    label = "Traditional CDN"
                     color = "b"
                 plt = {}
                 plt["color"] = color
@@ -664,7 +662,7 @@ class God(Manager):
                 lines2.append(line)
                 
         canvas = {}
-        canvas["xlabel"] = "Frequency of Request (x10)"
+        canvas["xlabel"] = "Frequency of Requests (x10)"
         canvas["ylabel"] = "Average Hop Distance"
         canvas["loc"] = "upper left"
         canvas["ymax"] = 12
@@ -673,7 +671,7 @@ class God(Manager):
         fig.bar()
         
         
-        canvas["xlabel"] = "Frequency of Request (x10)"
+        canvas["xlabel"] = "Frequency of Requests (x10)"
         canvas["ylabel"] = "Latency (x10 MS)"
         canvas["loc"] = "upper left"
         fig = Figure(Id="qos-latency", lines = lines2, canvas=canvas)
@@ -690,6 +688,7 @@ if __name__=="__main__":
         av = sys.argv[i]
         if av == "--debug":
             DEBUG = True
+            
         elif av == "--nodebug":
             DEBUG = False
             

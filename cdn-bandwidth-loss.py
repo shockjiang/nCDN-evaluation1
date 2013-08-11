@@ -657,12 +657,10 @@ class God(Manager):
                         dots2.append(dot)
                 
                 if consumerClass == "CDNConsumer":
-                   label = "NDN"
+                   label = "nCDN"
                    color = "y"
                 else:
-                    label = "IP"
-                    if multicast == "true":
-                        label += " with Multicast"
+                    label = "Traditional CDN"
                     color = "b"
                 plt = {}
                 plt["color"] = color
@@ -674,14 +672,14 @@ class God(Manager):
                 lines2.append(line)
                 
         canvas = {}
-        canvas["xlabel"] = "Frequency of Request (x10)"
+        canvas["xlabel"] = "Frequency of Requests (x10)"
         canvas["ylabel"] = "Satisfied Requests # (x$10^6$)"
         canvas["loc"] = "upper left"
         fig = Figure(Id="qos-bandwidth", lines = lines, canvas=canvas)
         #fig.line()
         fig.bar()
         
-        canvas["xlabel"] = "Frequency of Request (x10)"
+        canvas["xlabel"] = "Frequency of Requests (x10)"
         canvas["ylabel"] = "Dropped Packet # (x$10^6$)"
         canvas["loc"] = "upper left"
         fig = Figure(Id="qos-loss", lines = lines2, canvas=canvas)

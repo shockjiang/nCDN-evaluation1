@@ -18,13 +18,13 @@ import os, os.path
 
 #------------------------------
 
-PyConf.ITEM = "test"
-PyConf.SCRIPT = "test"
-PyConf.IS_REFRESH = True
+PyConf.ITEM = "jitter-test"
+PyConf.SCRIPT = "cdn-jetty"
+#PyConf.IS_REFRESH = True
 
 #************** Global Settings ****************************************
 
-class TraceStat(PyConf.Stat):
+class Stat(PyConf.Stat):
 
     def obtain(self):
         ''' get data from raw output data
@@ -67,28 +67,6 @@ class TraceStat(PyConf.Stat):
                     li[1] = li[1]/float(sum)
                     
                 self.log.debug(caseId+": "+str(self.data[case.Id]))
-
-
-class OutStat(PyConf.Stat):
-    def obtain(self):
-        self.log.info("> Stat: "+self.Id+" begins")
-        
-        for Id, case in self.cases.items():
-            fp = os.path.join(OUT, "Case", "request-"+Id+".txt")
-            f = open(fp)
-            self.data[Id] = []
-            self.log.debug("stat add Id: "+Id)
-            for line in f.readlines():
-                if line.startswith("#"):
-                    continue
-                parts = line.split()
-                parts[0] = int(parts[0])/1000.0
-                self.data[Id].append( parts )
-
-        self.log.info("< Stat: "+self.Id+" ends")
-    
-    def toRefresh(self):
-        return True
     
 class Figure(PyConf.Figure):
     def extend(self, plt):
@@ -99,9 +77,9 @@ class God(PyConf.God):
     def __init__(self, paper):
         PyConf.God.__init__(self, paper=paper)
         headers = ["latency", "count"]
-        self.stat = TraceStat(Id=self.parseId(self.dic), cases=self.cases, headers=headers)
-        headers = ["time", "droppedPacketN", "changeProducerN", "satisfiedRequestN", "unsatisfiedRequestN"]
-        self.stat2 = TraceStat(Id=self.parseId(self.dic), cases=self.cases, headers=headers)
+        self.stat = Stat(Id=self.parseId(self.dic), cases=self.cases, headers=headers)
+        #headers = ["time", "droppedPacketN", "changeProducerN", "satisfiedRequestN", "unsatisfiedRequestN"]
+        #self.stat2 = TraceStat(Id=self.parseId(self.dic), cases=self.cases, headers=headers)
 
     def setup(self, dic):    
         for freq in self.freq:
@@ -125,7 +103,7 @@ class God(PyConf.God):
     
     def world(self, dic):
         self.stat.stat()
-        self.stat2.stat()
+        
         
         lines = []
         lines2 = []
@@ -143,7 +121,7 @@ class God(PyConf.God):
                 for producerN in self.producerN:
                     dic["producerN"] = producerN
                 
-                    for freq in [100]:#self.freqs:
+                    for freq in self.freq:#self.freqs:
                         dic["freq"] = freq  
                         Id = self.parseId(dic)
                         
@@ -180,6 +158,9 @@ if __name__=="__main__":
         if av == "--debug":
             PyConf.DEBUG = True
             PyConf.OUT = PyConf.OUT+"-debug"
+            PyConf.ITEM = "jitter-test"
+            PyConf.SCRIPT = "test"
+            PyConf.SCRIPT = "cdn-jetty"
         elif av == "--nodebug":
             PyConf.DEBUG = False
             

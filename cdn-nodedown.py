@@ -555,37 +555,47 @@ class God(Manager):
 #         loss
         self.stat.stat()
         lines = []
+        lines2 = []
         for Id, case in self.cases.items():
             times = self.stat.get(Id, "time")
             unsatisfiedRequestNs = self.stat.get(Id, "unsatisfiedRequestN")
+            changeNs = self.stat.get(Id, "changeProducerN")
+            
             self.log.debug("times="+str(times)+" Ns="+str(unsatisfiedRequestNs))
             assert len(times) == len(unsatisfiedRequestNs), "length is not equal"
             dots = []
+            dots2 = []
             for i in range(len(times)):
                 dot = Dot(x=times[i], y=unsatisfiedRequestNs[i])
                 dots.append(dot)
-            
+                
+                dot = Dot(x=times[i], y=changeNs[i])
+                dots2.append(dot)
             plt = {}
             
             if case.param["consumerClass"] == "CDNConsumer":
-                label = "NDN"
+                label = "nCDN"
                 color = "y"
             elif  case.param["consumerClass"] == "CDNIPConsumer":
-                label = "IP"
-                if case.param["multicast"] == "true":
-                    label += " with Multicast"
+                label = "Traditional CDN"
                 color = "b"
             self.log.debug("consumerClass="+case.param["consumerClass"]+" multicast="+case.param["multicast"])
             plt["label"] = label
             plt["color"] = color
             line = Line(dots = dots, plt=plt)
             lines.append(line)
-        
+            
+            line = Line(dots=dots2, plt=plt)
+            lines2.append(line)
+            
         canvas = {}
         canvas["loc"] = "upper left"
         canvas["xlabel"] = "Time (Second)"
         canvas["ylabel"] = "Unsatisfied Requests # (x$10^2$)"
         fig = Figure(Id="reliabiltiy-node", lines=lines, canvas=canvas)
+        fig.line()
+
+        fig = Figure(Id="reliabiltiy-producerChange", lines=lines2, canvas=canvas)
         fig.line()
 
 #         freqs = [100]
